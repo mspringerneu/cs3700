@@ -1,0 +1,116 @@
+#!/usr/bin/env python
+
+#import statments
+import sys
+import socket
+import ssl
+import math
+import re
+
+# compute the math equation provided by the server
+# compute(int, symbol, int) -> int
+def compute(x, operator, y):
+
+	# ensure proper message syntax
+	try:
+		x = int(x)
+		y = int(y)
+	except ValueError:
+		s.close()
+		sys.exit(1)
+
+	# compute syntactically correct messages
+	if operator == '+':
+		return str(x + y)
+	elif operator == '-':
+		return str(x - y)
+	elif operator == '*':
+		return str(x * y)
+	elif operator == '/':
+		return str(x//y)
+	else:
+		s.close() 
+		sys.exit(1)
+
+def main():
+# $ ./client <-p port> <-s> [hostname] [NEU ID]
+	
+	# turn sys.argv into a string
+	nuid = sys.argv[-1]
+	hostname = sys.argv[-2]
+	comArgs = " ".join(sys.argv)
+
+	# regex for port number 
+	portIntermediate = re.search('(?<= -p )\w+', comArgs)
+
+	# regex for ssl
+	try: 
+		portIntermediate2 = portIntermediate.group(0)
+	except AttributeError:
+		portIntermediate2 = False 
+
+	secretBool = bool(re.search(' -s ', comArgs))
+
+	# logic for resolving 
+	if portIntermediate2:
+		port = int(portIntermediate2)
+	elif secretBool:
+		port = 27994
+	else:
+		port = 27993
+
+	# compute the number of iterations that have been done 
+	count = 0
+
+	#create an INET, STREAMing socket
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+	# added this for now - to test none ssl 
+	if secretBool:
+		s = ssl.wrap_socket(s)
+		try:
+			s.connect((hostname, port))
+		except socket.error as errorMessage:
+			print "Unable to connect to server.  Program exiting..."
+			s.close()
+			sys.exit()
+	else:
+		try:
+			s.connect((hostname, port))
+		except socket.error as errorMessage:
+			print "Unable to connect to server.  Program exiting..."
+			s.close()
+			sys.exit()
+
+	# sending 
+	hello = "cs3700fall2016 HELLO {}\n"
+	send_response = "cs3700fall2016 {}\n" 
+
+	#connecting to server
+	s.send(hello.format(nuid))
+
+	# begin solving equations
+	solving = True
+	while solving:
+		sResponse = s.recv(256)
+		parsedResponse = sResponse.split()
+		
+		try: 
+			if parsedResponse[1] == 'STATUS':
+				answer = compute(parsedResponse[2],
+					 parsedResponse[3], parsedResponse[4])
+				s.send(send_response.format(answer))
+			elif parsedResponse[1] == 'BYE':
+				solving = False
+				print parsedResponse[2]
+				s.close()
+				sys.exit()
+		except IndexError: 
+			pass
+
+#run main 
+main()
+
+
+	
+		

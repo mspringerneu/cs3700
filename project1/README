@@ -1,0 +1,35 @@
+// Matt Springer & Dan Hennessy
+// Project 1
+// 9/15/2016
+
+// High-Level Approach
+
+For this project, we decided to develop in Python due to its versatility and our desire 
+to better learn the language, as we were both relatively inexperienced with it.  After a brief
+inspection of Python's socket API, we were able to succesfully create a socket and connect with
+the project 1 server.  The 'meat' of the project would be handling the 'STATUS' messages sent
+from the server, so we defined a separate 'compute' method to handle this functionality.  The
+'compute' method first ensures the proper 'int operator int' syntax, and then returns the
+computed value for the socket to return to the server.  Once we were able to successfully obtain
+the 'secret_flag' from the server, we added the extra-credit SSL functionality relatively easily.
+
+At this point, we went about refining our code.  Our original means of checking for the '-p'
+and '-s' flags was to value check the appropriate argv indices.  We later altered this to convert
+all arguments to a whitespace-delimited string and used Python's regular expression functionality
+to retrieve the corresponding port number when the '-p' flag is present, as well as to detect the
+presence of the '-s' flag.
+
+// Difficulties encountered
+
+As we were both somewhat unfamiliar with using Python, there were the expected roadbumps as we
+learned the proper syntax and method calls that Python uses.  Additionally, as we were
+developing the project in vim, we encountered some vexing errors that were ultimately caused by
+the lack of a matching parenthesis, something that a Java or C++ IDE would have caught, but that
+we had to locate ourselves without the crutch of built-in compiler errors.
+
+// Testing strategies
+
+To aid with debugging and testing, we primarily used Python's 'print' method to ensure that we
+properly parsing the messages received from the server, as well as sending properly formatted
+messages to the server.  We also used Python's 'try' and 'except' methods to gracefully handle
+errors.
