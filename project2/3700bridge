@@ -1,0 +1,60 @@
+#!/usr/bin/env python
+#!/usr/bin/python -u    
+# The -u makes output unbuffered, so it will show up immediately
+import sys
+import socket
+import select
+import json
+ 
+# pads the name with null bytes at the end
+def pad(name):
+        result = '\0' + name
+        while len(result) < 108:
+                result += '\0'
+        return result
+
+# transmit a BPDU for spanning tree algorithm
+# ex: "{"source":"0000","dest":"ffff","type":"bpdu"
+def broadcast(bpdu):
+	print "This is my bpdu"
+
+def spanningTree(bpdu):	
+	print "Updating the bridge spanning tree"
+
+def forward(message):
+	print "Forwarding message"
+
+def main():
+        id = sys.argv[1]
+        LAN = sys.argv[2:]
+        sockets = []
+        
+        # creates sockets and connects to them
+        for x in range(len(LAN)):
+                s = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+                s.connect(pad(LAN[x]))
+                sockets.append(s)
+        
+        
+        print "Bridge " + id + " starting up\n"
+ 
+        # Main loop
+        while True:
+                # Calls select with all the sockets; change the timeout value (1)
+                ready, ignore, ignore2 = select.select(sockets, [], [], 1)
+ 
+                # Reads from each of the ready sockets
+                for x in ready:
+                        data = json.loads(x.recv(1500))
+			#print data
+			print data['type']
+			if data['type'] == "bpdu":
+				spanningTree(data)
+				print data
+			elif data['type'] == "data":
+				forward(data)
+                        	print data
+
+main()
+
+
