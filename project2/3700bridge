@@ -5,7 +5,9 @@ import sys
 import socket
 import select
 import json
- 
+
+
+
 # pads the name with null bytes at the end
 def pad(name):
         result = '\0' + name
@@ -24,10 +26,44 @@ def spanningTree(bpdu):
 def forward(message):
 	print "Forwarding message"
 
+
+
+class BPDU:
+	def __init__(self, id, root, cost):
+		self.id = id
+		self.root = root
+		self.cost = cost
+
+	def compare(self, newbpdu):
+		if newbpdu.root > self.root:
+			return 0
+		elif newbpdu.root < self.root:
+			self.root = newbpdu.root
+			self.cost = newbpdu.cost + 1
+			print "New root: " + self.id + " / " + self.root
+			return 1
+		else:
+			if newbpdu.cost > self.cost + 1:
+				return 2
+			elif newbpdu.cost < self.cost + 1:
+				self.cost = newbpdu.cost + 1
+				return 3
+			else:
+				if newbpdu.id > self.id:
+					return 4
+				else return 5
+
+	def broadcast(self):
+		return json.dumps({"source":self.id,"dest":"ffff","type":"bpdu","message":{"id":self.id,"root":self.root,"cost":self.cost}})	
+
 def main():
         id = sys.argv[1]
         LAN = sys.argv[2:]
         sockets = []
+
+	# variables for spanning tree algorithm
+	mybpdu = BPDU(id,id,0)
+	rootPortIndex = 0
         
         # creates sockets and connects to them
         for x in range(len(LAN)):
@@ -49,7 +85,25 @@ def main():
 			#print data
 			print data['type']
 			if data['type'] == "bpdu":
-				spanningTree(data)
+				yourbpdu = BPDU(data['message']['id'],data['message']['root'],data['message']['cost'])
+				switch(mybpdu.compare(yourbpdu):
+					case 0:
+						break
+					case 1:
+						rootPortIndex = sockets.index(x)
+						print "Root port: " + mybpdu.id + " / " + rootPortIndex
+						break
+					case 2:
+						break
+					case 3:
+						rootPortIndex = sockets.index(x)
+						print "Root port: " + mybpdu.id + " / " + rootPortIndex
+						break
+					case 4:
+						break
+					case 5:
+						
+				spanningTree(data, )
 				print data
 			elif data['type'] == "data":
 				forward(data)
