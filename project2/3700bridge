@@ -186,8 +186,7 @@ class Bridge:
         bpdu.cost += 1
         bpduMessage = {"source":self.id,"dest":"ffff","type":"bpdu","message":{"id":self.id,"root":bpdu.root,"cost":bpdu.cost}}
         for x in self.ports:
-            if x.activePort:
-                x.socket.send(json.dumps(bpduMessage))
+            x.socket.send(json.dumps(bpduMessage))
 
     def broadcast(self, dataMessage, receivingPort):
         ports = []
@@ -395,7 +394,7 @@ def main():
         bridge.update()
 
         # Calls select with all the sockets; change the timeout value (1)
-        ready, ignore, ignore2 = select.select(sockets, [], [], 1)
+        ready, ignore, ignore2 = select.select(sockets, [], [], .1)
 
         # Reads from each of the ready sockets
         for x in range(len(ready)):
