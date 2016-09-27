@@ -1,24 +1,119 @@
+#!/usr/bin/env python
 #!/usr/bin/python -u    
 # The -u makes output unbuffered, so it will show up immediately
 import sys
 import socket
 import select
 import json
- 
+
+
+
 # pads the name with null bytes at the end
 def pad(name):
         result = '\0' + name
         while len(result) < 108:
                 result += '\0'
         return result
- 
-if __name__ == "__main__":
+
+# transmit a BPDU for spanning tree algorithm
+# ex: "{"source":"0000","dest":"ffff","type":"bpdu"
+def broadcast(bpdu):
+	print "This is my bpdu"
+
+def spanningTree(bpdu):	
+	print "Updating the bridge spanning tree"
+
+def forward(message):
+	print "Forwarding message"
+
+class ForwardingTable:
+	def __init__(self):
+	self.entries = []
+
+	def addSource(self, address, port):
+		t = time.clock()
+		hasAddress = false
+		retVal = -1
+		for x in self.entries:
+			if x.address == address:
+				hasAddress = True
+				x.port == port
+				x.timer = t
+				retVal = 0  # indicates an entry was updated
+				break
+		if !hasAddress:
+			self.entries.append(ForwardingTableEntry(address, port, t))
+			retVal = 1  #indicates a new entry was added
+		return retVal
+
+	def getDestPort(self, dest, port):
+		hasAddress = false
+		for x in self.entries:
+			if x.address == dest:
+				x.timer = 0
+				return x.port
+		return -1
+
+	def updateTable(self):
+		t = time.clock()
+		for x in self.entries:
+			if t - x.timer >= 5:
+				self.entries.remove(x)
+	
+
+class ForwardingTableEntry:
+	def __init__(self, address, port, time):
+		self.address = address
+		self.port = port
+		self.timer = time
+
+class BPDU:
+	def __init__(self, id, root, cost):
+		self.id = id
+		self.root = root
+		self.cost = cost
+
+	def compare(self, newbpdu):
+		if newbpdu.root > self.root:
+		elif newbpdu.root < self.root:
+			self.root = newbpdu.root
+			self.cost = newbpdu.cost + 1
+			print "New root: " + self.id + " / " + self.root
+		else:
+			if newbpdu.cost > self.cost + 1:
+			elif newbpdu.cost < self.cost + 1:
+				self.cost = newbpdu.cost + 1
+			else:
+				if newbpdu.id > self.id:
+
+	def broadcast(self):
+		return json.dumps({"source":self.id,"dest":"ffff","type":"bpdu","message":{"id":self.id,"root":self.root,"cost":self.cost}})
+
+def BPDUfromJSON(message):
+	data = json.loads(message)
+	return BPDU(data['message']['id'],data['message']['root'],data['message']['cost'])
+
+def main():
         id = sys.argv[1]
         LAN = sys.argv[2:]
         sockets = []
+	global activeSockets = []
+	global disabledSocets = []
+	global fwdtbl = ForwardingTable()
+
+	# variables for spanning tree algorithm
+	mybpdu = BPDU(id,id,0)
+	testbpdumessage1 = '{"id": "08ad", "lans": [1, 2, 7]}'
+	testbpdu1 = BPDUfromJSON(testbpdumessage1)
+	testbpdumessage2 = '{"id": "9e3a", "lans": [2, 3, 4, 8]}'
+	testbpdu2 = BPDUfromJSON(testbpdumessage2)
+	testbpdumessage3 = '{"id": "ff1a", "lans": [3, 4, 5, 6, 7]}
+	testbpdu3 = BPDUfromJSON(testbpdumessage3)
+	rootPortIndex = 0
         
         # creates sockets and connects to them
         for x in range(len(LAN)):
+		activeSockets.append(x)
                 s = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
                 s.connect(pad(LAN[x]))
                 sockets.append(s)
@@ -31,8 +126,43 @@ if __name__ == "__main__":
                 # Calls select with all the sockets; change the timeout value (1)
                 ready, ignore, ignore2 = select.select(sockets, [], [], 1)
  
-                # Reads from each fo the ready sockets
+                # Reads from each of the ready sockets
                 for x in ready:
-                        data = x.recv(1500)
-                        print(data)
+                        data = json.loads(x.recv(1500))
+			#print data
+			print data['type']
+			if data['type'] == "bpdu":
+				yourbpdu = BPDU(data['message']['id'],data['message']['root'],data['message']['cost'])
+				switch(mybpdu.compare(yourbpdu):
+					case 0:
+						break
+					case 1:
+						rootPortIndex = sockets.index(x)
+						print "Root port: " + imybpdu.id + " / " + rootPortIndex
+						break
+					case 2:
+						break
+					case 3:
+						rootPortIndex = sockets.index(x)
+						print "Root port: " + id + " / " + rootPortIndex
+						break
+					case 4:
+						break
+					case 5:
+						# add port to disabled list
+						print "Disabled port: " + id + " / " + sockets.index(x)
+				spanningTree(data, )
+				print data
+			elif data['type'] == "data":
+				fwdtbl.addSource(data['source'], ready.index(x))
+				destPort = getDestPort(data['dest'])
+				if destPort == -1:
+					# send to all active port except current one
+				else:
+					# send to port returned from table
+				forward(data)
+                        	print data
+
+main()
+
 
