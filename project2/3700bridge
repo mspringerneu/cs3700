@@ -5,99 +5,117 @@ import select
 import json
 import time
 
-BPDU_TIMEOUT = .75
-BPDU_BROADCAST = .5
+#####################################
+# timing variables used in program
+#####################################
+BPDU_TIMEOUT = .4
+BPDU_BROADCAST = .3
 FWDTBL_TIMEOUT = 5.0
 
-######################################################################
-# All print statements
+#########################################################
+# Class PrintStatements
+# Purpose: All print statements in the program live here
+
+
 class PrintStatements:
 
-    ######################################################################
-    #BPDU Messages
+    ###################################
+    # Print statements for BPDU Messages
+    ###################################
 
-    #Print Bridge starting
+    # Print statement for bridge starting
     def print_bridge_start(self, id):
         print "Bridge " + str(id) + " starting up\n"
 
-    #Print statement for when bridge changes root
+    # Print statement for when bridge changes root
     def print_new_root(self, id, root):
         print "New root: " + str(id) + " / " + str(root) + "\n"
 
-    #Print new root port
+    # Print statement for when you have a new root port
     def print_new_root_port(self, id, portID):
         print "Root port: " + str(id) + " / " + str(portID) + "\n"
 
-    #Print Designated port
+    # Print statement for when you have a new designated port
     def print_designated_port(self, id, portID):
         print "Designated port: " + str(id) + " / " + str(portID) + "\n"
 
-    #Print disabled port
+    # Print statement for when port is disabled
     def print_disabled_port(self, id, portID):
         print "Disabled port: " + str(id) + " / " + str(portID) + "\n"
 
 
-    ######################################################################
-    #Data Messages
+    ###################################
+    # Print statement for Data Messages
+    ###################################
 
-    #Printing received messages
+    # Print statement for receiving messages
     def print_received_message(self, id, portID, source, dest):
         print "Received message " + str(id) + " on port " + str(portID) + " from " + str(source) + " to " + str(dest) + "\n"
 
-
-    #Printing forwarding message
+    # Print statement for forwarding messages
     def print_forwarding_message(self, id, portID):
         print "Forwarding message " + str(id) + " on port " + str(portID) + "\n"
 
-    #Printing broadcasting message
+    # Print statement for broadcasting message
     def print_broadcasting_message(self, id, ports):
         print "Broadcasting message " + str(id) + " on ports: " + str(ports) + "\n"
 
-    #Printing forwarding message
+    # Print statement for  forwarding message
     def print_not_forwarding_message(self, id):
         print "Not forwarding message " + str(id) + "\n"
 
 
 ######################################################################
 
+# CLASS BRIDGE
 
+# arguments of a bridge
 
+# id                    - bridgesID (supplied by config)
+# BPDU                  - the BPDU that this bridge sends out
+# bestBPDU              - this is the bestBPDU received on this bridge
+# ports                 - (array) an array of this bridges ports (sockets)
+# forwardingTable       - (array) this bridges forwardingTable
+# rootPort              - (boolean) the index of the rootPort
+# isRoot                - (boolean) is this root bridge the rootBridge
 
+# methods in class bridge
 
-
-######################################################################
-'''
-CLASS BRIDGE
-
-id    = bridgesID (supplied by config)
-
-ports = - created during initialization
-        - includes socket
-'''
+# updateMyBPDU - updates the class argument BPDU (the one we send out)
+# updateBPDUs  - searches for the best BPDU across all ports and stores it in self.bpdu
+# updatePortBPDU - done after a new BPDU is added (returns true if ports best BPDU is better than bridges best)
+# getSocketPortIndex - getter method for index of port containing specific socket
+# makeRoot - updates the root of this bridge (makes sure no one else thinks they are the root)
+# removeDuplicateFwdTableEntry - if the given address matches one in our forwarding table- delete it- and add this one
+# addForwardingTableEntry - adds this new entry to our forwarding table
+# getForwardingPort - used to determine if this bridge has a given port (returns -1 if it doesn't)
+# timeoutForwardingTable - if the time of a forwarding table has gone over our timeout value (remove it)
+# flushForwardingTable - flushes our forwarding table if a change has been made in our bridge configuration
+# timeoutBPDUs - times out this bridges BPDUS according to our variable
+# resetBridge - resets the bridge to its default settings
+# broadcastBPDU  - broadcasts our Bridges BPDUs
+# broadcast - for sending out messages
+# checkIfNeeded- handles if the root port is the only active port (meaning there is no other data)
+# setDefaultBPDU - sets the bridges BPDU and bestBPDU to the default BPDU
 
 
 class Bridge:
     def __init__(self, id):
         self.id = id
-        # stores the best BPDU received across all port
         self.BPDU = Bpdu(id, id, 0)
         self.bestBPDU = Bpdu(id, id, 0)
         self.ports = []
         self.forwardingTable = []
-        # index of the root port in self.ports
         self.rootPort = None
         self.isRoot = True
 
-    # todo: add forwarding table timeout method, add port bpdu array timeout method
-    def update(self):
-        #self.updateBPDUs()
-        self.timeoutForwardingTable()
-
+    # updates the class argument BPDU (the one we send out)
     def updateMyBPDU(self):
-        self.BPDU.root = self.bestBPDU.root
+        if self.BPDU.root != self.bestBPDU.root:
+            self.BPDU.root = self.bestBPDU.root
+            PrintStatements().print_new_root(self.id, self.BPDU.root)
         self.BPDU.cost = self.bestBPDU.cost + 1
         self.broadcastBPDU()
-
 
     # searches for the best BPDU across all ports and stores it in self.bpdu
     def updateBPDUs(self):
@@ -115,19 +133,21 @@ class Bridge:
                 for x in self.ports:
                     if not x.isRoot:
                         x.setPortStatus(self)
+                self.checkIfNeeded()
             else:
                 self.updateMyBPDU()
                 for x in self.ports:
                     if not x.isRoot:
                         x.setPortStatus(self)
+                self.checkIfNeeded()
         else:
             for x in self.ports:
                 if not x.isRoot:
                     x.setPortStatus(self)
+            self.checkIfNeeded()
 
-    # done after a new BPDU is added- sees if that BPDU's port has any new information	
-    # return true if the port's best BPDU is better than the bridge's current best BPDU
-    # if port BPDU is better, store it as the bridge's best BPDU
+    # done after a new BPDU is added- sees if that BPDU's port has any new information
+    # return true if the port's best BPDU is better than the bridge's current best BPDU (stores it)
     def updatePortBPDU(self, x):
         if len(x.BPDUs) > 0:
             # if port root <= bridge best bpdu root
@@ -163,15 +183,14 @@ class Bridge:
         else:
             return False
 
-    # returns the index of the port containing a specific socket
+    # getter method for index of port containing specific socket
     def getSocketPortIndex(self, sock):
         for i in range(len(self.ports)):
             if self.ports[i].socket == sock:
                 return i
                 break
 
-
-    # SETTING ALL INFORMATION for the root port
+    # updates the root of this bridge (makes sure no one else thinks they are the root)
     def makeRoot(self, portIndex):
         # set all the ports to not being the root port
         for x in self.ports:
@@ -182,17 +201,19 @@ class Bridge:
         self.ports[portIndex].designatedPort = False
         PrintStatements().print_new_root_port(self.id, self.rootPort)
 
+    # if the given address matches one in our forwarding table- delete it- and add this one
     def removeDuplicateFwdTableEntry(self, address):
         for x in self.forwardingTable:
             if x.address == address:
                 self.forwardingTable.remove(x)
 
-
+    # adds this new entry to our forwarding table
     def addForwardingTableEntry(self, address, portIndex):
         self.removeDuplicateFwdTableEntry(address)
         self.forwardingTable.append(ForwardingTableEntry(address, portIndex))
 
-    def getForwardingPort(self,address):
+    # used to determine if this bridge has a given port (returns -1 if it doesn't)
+    def getForwardingPort(self, address):
         inTable = False
         for x in self.forwardingTable:
             if x.address == address:
@@ -204,26 +225,47 @@ class Bridge:
         if not inTable:
             return -1
 
-
+    # if the time of a forwarding table has gone over our timeout value (remove it)
     def timeoutForwardingTable(self):
         timer = time.time()
         for x in self.forwardingTable:
             if timer - x.time > FWDTBL_TIMEOUT:
                 self.forwardingTable.remove(x)
 
+    # flushes our forwarding table if a change has been made in our bridge configuration
     def flushForwardingTable(self):
         self.forwardingTable = []
 
+    # times out this bridges BPDUS according to our variable
     def timeoutBPDUs(self):
+        timeout = False
         for i in range(len(self.ports)):
             if self.ports[i].timeoutBPDUs(self.id):
-                self.flushForwardingTable()
+                timeout = True
+        if timeout:
+            self.resetBridge()
 
+    # resets the bridge to its default settings
+    def resetBridge(self):
+        for x in self.ports:
+            x.isRoot = False
+            x.activePort = True
+            x.designatedPort = False
+            x.BPDUs = []
+        self.BPDU = Bpdu(self.id, self.id, 0)
+        self.bestBPDU = Bpdu(self.id, self.id, 0)
+        self.forwardingTable = []
+        self.rootPort = None
+        self.broadcastBPDU()
+
+    # broadcasts our Bridges BPDUs
     def broadcastBPDU(self):
-        bpduMessage = {"source":self.BPDU.source,"dest":"ffff","type":"bpdu","message":{"id":self.BPDU.source,"root":self.BPDU.root,"cost":self.BPDU.cost}}
+        bpduMessage = {"source":self.BPDU.source,"dest":"ffff",
+                       "type":"bpdu","message":{"id":self.BPDU.source,"root":self.BPDU.root,"cost":self.BPDU.cost}}
         for x in self.ports:
             x.socket.send(json.dumps(bpduMessage))
 
+    # for sending out messages
     def broadcast(self, dataMessage, receivingPort):
         ports = []
         for x in self.ports:
@@ -232,53 +274,69 @@ class Bridge:
                 x.socket.send(json.dumps(dataMessage))
         return ports
 
+    # handles if the root port is the only active port (meaning there is no other data)
+    def checkIfNeeded(self):
+        hasActive = False
+        if self.rootPort is not None:
+            for x in self.ports:
+                if x.activePort and not x.isRoot:
+                    hasActive = True
+                    break
+            if not hasActive:
+                if self.ports[self.rootPort].activePort:
+                    self.ports[self.rootPort].activePort = False
+                    PrintStatements().print_disabled_port(self.id, self.rootPort)
+            else:
+                if not self.ports[self.rootPort].activePort:
+                    self.ports[self.rootPort].activePort = True
 
-
+    # sets the bridges BPDU and bestBPDU to the default BPDU
+    def setDefaultBPDU(self):
+        self.BPDU = Bpdu(self.id, self.id, 0)
+        self.bestBPDU = Bpdu(self.id, self.id, 0)
 
 ######################################################################
+# CLASS PORT
 
+# arguments of a port
 
+# id                - the id of this port
+# socket            - the socket associated with this port
+# BPDUs             -  array of the BPDUS received on this port (One per unique source)
+# isRoot            - (boolean) is this port the root
+# activePort        - (boolean) is this port active
+# designatedPort    - (boolean) is this port designated
 
+# methods in class port
 
-
-
-######################################################################
-'''
-CLASS PORT
-
-id                   = (0 indexed port)
-
-socket               = socket associated with this port
-
-BPDUS                = BPDU's that were received on this port
-
-designatedPort       = Is this port a designatedPort
-
-'''
+# isEnabled - set this port to enabled
+# isDesignated - set this port to designated
+# evaluateBPDUs - checks if the new BPDU is the  new best BPDU for this port
+# evaluateBPDU - determines if the given BPDU is better than the BPDU at the given index in ports array of BPDUS
+# timeoutBPDUs - to timeout this ports BPDUs
+# setPortStatus - after a change in the Spanning tree we check/set the status of all the ports
+# sameSourceBPDU - do we have a BPDU form this source already
+# handleSameSourceBPDU - logic for dealing with BPDU from same source
 
 
 class Port:
     def __init__(self, id, socket):
         self.id = id
         self.socket = socket
-        self.BPDU = None
         self.BPDUs = []
-        # status codes:
-        # 0 - root
-        # 1 - designated
-        # 2 - disabled
-        self.status = 1
         self.isRoot = False
         self.activePort = True
         self.designatedPort = True
 
+    # set this port to enabled
     def isEnabled(self, enabled):
         self.activePort = enabled
 
+    # set this port to designated
     def isDesignated(self, designated):
         self.designatedPort = designated
 
-
+    # checks if the new BPDU is the  new best BPDU for this port
     def evaluateBPDUs(self, bpdu):
         insertedBPDU = True
         if len(self.BPDUs) == 0:
@@ -317,9 +375,9 @@ class Port:
                 else:
                     return False
 
-
-    # determines whether or not a port should store a new BPDU
-    # if it decides to store the BPDU, it places it at the front of the list
+    # determines if a new BPDU is better than the BPDU stored at a specified index
+    # if it is better, the function that calls evaluateBPDU
+    # will insert the new BPDU before the one at index i
     def evaluateBPDU(self, index, bpdu):
         if self.BPDUs[index].root >= bpdu.root:
 
@@ -328,28 +386,24 @@ class Port:
             elif self.BPDUs[index].cost >= bpdu.cost:
                 if self.BPDUs[index].cost > bpdu.cost:
                     return True
-                elif self.BPDUs[index].source >= bpdu.source:
+                elif self.BPDUs[index].source > bpdu.source:
                     return True
-                else: return False
-            else: return False
-        else: return False
-
-    def timeoutBPDUs(self, bridgeId):
-        timer = time.time()
-        for x in self.BPDUs:
-            if timer - x.time > BPDU_TIMEOUT:
-                self.BPDUs.remove(x)
-        if len(self.BPDUs) == 0:
-            if not self.activePort and self.designatedPort:
-                self.activePort = True
-                self.designatedPort = True
-                PrintStatements().print_designated_port(bridgeId, self.id)
-                return True
+                else:
+                    return False
             else:
                 return False
         else:
             return False
 
+    # to timeout this ports BPDUs
+    def timeoutBPDUs(self, bridgeId):
+        bestBPDUremoved = False
+        timer = time.time()
+        for x in self.BPDUs:
+            if timer - x.time > BPDU_TIMEOUT:
+                return True
+
+    # after a change in the Spanning tree we check/set the status of all the ports
     def setPortStatus(self, bridge):
         # 0 root
         # 1 active & designated
@@ -384,8 +438,9 @@ class Port:
                             designated = False
                             break
                 else:
-                    active = True
+                    active = False
                     designated = False
+                    break
 
             if self.activePort:
                 if not active:
@@ -406,33 +461,16 @@ class Port:
                     PrintStatements().print_designated_port(bridge.BPDU.source, self.id)
                     bridge.flushForwardingTable()
 
-
-    def activePortss(self, x, y):
-        # active when len(self.BPDUs) == 0
-        # active when self.isRoot
-        # active when any item in self.BPDUs has same root && cost == bridge cost + 1 || same root && cost == bridge cost && bridge id < source id
-        returnValue = False
-        if self.BPDUs[0].root != x:
-            self.activePort = False
-        returnValue = True
-        return returnValue
-
-    def designatedPortss(self, x, y):
-        returnValue = False
-        if len(self.BPDUs) > 0:
-            if self.BPDUs[0].root ==  x:
-                self.designatedPort = True
-                returnValue = False
-        return returnValue
-
+    # do we have a BPDU form this source already
     def sameSourceBPDU(self, bpdu):
         sameBPDU = False
         for i in range(len(self.BPDUs)):
             if bpdu.source == self.BPDUs[i].source:
                 sameBPDU = True
+                break
         return sameBPDU
 
-
+    # logic for dealing with BPDU from same source
     def handleSameSourceBPDU(self, bpdu):
         sameBPDU = False
         for i in range(len(self.BPDUs)):
@@ -448,16 +486,15 @@ class Port:
         return sameBPDU
 
 
-
 ######################################################################
+# CLASS BPDU
 
+# arguments of class BPDU
 
-
-
-
-
-######################################################################
-
+# source   - source of the Bpdu message
+# root     - where this BPDU thinks the root is
+# cost     - (int) cost to get to the root
+# time     - initialize time for BPDU (so that you know when to time it out)
 
 class Bpdu:
     def __init__(self, source, root, cost):
@@ -468,15 +505,13 @@ class Bpdu:
 
 
 ######################################################################
-'''
-CLASS BRIDGE
+# CLASS ForwardingTableEntry
 
-address    = source of the received message
+# arguments of the class ForwardingTableEntry
 
-port       = port the message was received on
-
-time       = time the entry was created
-'''
+# address  - the address of the message
+# port     - port that the message came in on
+# time     - initialize time for ForwardingTableEntry (so that you know when to time it out)
 
 
 class ForwardingTableEntry:
@@ -485,20 +520,17 @@ class ForwardingTableEntry:
         self.port = portIndex
         self.time = time.time()
 
-######################################################################
-
 
 ######################################################################
-'''
-CLASS HELPER: for helper methods
+# CLASS Helper
 
-- pad (pads data for transfer
+# arguments of the class Helper (NONE)
 
+# methods in class port
 
+# pad
 
-'''
-
-
+# pads the socket name to be sent
 class Helper:
     def pad(self, name):
         result = '\0' + name
@@ -513,6 +545,7 @@ def main():
 
     # bridge id as indicated by the command arg
     id = sys.argv[1]
+
     # remove potential duplicate LAN arguments
     LAN = []
     for x in sys.argv[2:]:
@@ -527,7 +560,7 @@ def main():
     # bridge clock
     bpduTimer = time.time()
     fwdTableTimer = time.time()
-    broadcastTimer = 0
+    broadcastTimer = time.time()
 
     # creates sockets and connects to them
     for x in range(len(LAN)):
@@ -539,16 +572,21 @@ def main():
         # increase the count
         # add the port to this bridges ports
         bridge.ports.append(port)
-        ############################################
-        # at this point this bridge and its associated ports are configured
 
     # Print that the bridge is starting
     PrintStatements().print_bridge_start(bridge.id)
 
+    # start broadcast the BPDUs
     bridge.broadcastBPDU()
 
     # Main loop
     while True:
+
+        # handles timing necessary for:
+        # - BPDU_timeout
+        # - BPDU_BROADCAST
+        # - FWDTBL_TIMEOUT
+
         timer = time.time()
         deltaBpduTime = timer - bpduTimer
         deltaBroadcastTime = timer - broadcastTimer
@@ -565,9 +603,6 @@ def main():
             bridge.timeoutForwardingTable()
             fwdTableTimer = timer
 
-        # point of control for rest of main()
-        # refresh spanning tree based on current BPDUs
-
         # Calls select with all the sockets; change the timeout value (1)
         ready, ignore, ignore2 = select.select(sockets, [], [], .1)
 
@@ -579,9 +614,6 @@ def main():
             currentSocket = bridge.ports[socketPort].socket
             # read JSON message
             data = json.loads(currentSocket.recv(1500))
-
-
-            ###########################################################################
 
             # if the received message is a BPDU:
             if data['type'] == "bpdu":
@@ -596,54 +628,35 @@ def main():
                 # BPDU is the best for that port
                 if bridge.ports[socketPort].evaluateBPDUs(newBPDU):
                     bridge.updateBPDUs()
-                #
-                # if(bridge.ports[socketPort].activePortss(bridge.bpdu.root, bridge.bpdu.cost)):
-                #     bridge.flushForwardingTable()
-                #
-                # if(bridge.ports[socketPort].designatedPortss(bridge.bpdu.root, bridge.bpdu.cost)):
-                #     bridge.flushForwardingTable()
-
-                ###########################################################################
-
 
             elif data['type'] == "data":
-                #todo: store addresses from disabled ports in forwarding table, forward mesages to root
+                # if port is active print that we received message,
                 if bridge.ports[socketPort].activePort:
-                    PrintStatements().print_received_message(data['message']['id'], socketPort, data['source'], data['dest'])
-
-
-                    ###########################################################################
-
-
-
-                    # logic abstraction
-                    #   if source in fwd table -> reset entry timer
-                    #   else -> add new entry for source
-                    #   if dest in fwd table -> send message on corresponding port
-                    #   else -> broadcast on all ports except current port
-
+                    PrintStatements().print_received_message(data['message']['id'],
+                                                             socketPort, data['source'], data['dest'])
                     bridge.addForwardingTableEntry(data['source'], socketPort)
                     fwdPort = bridge.getForwardingPort(data['dest'])
+                    # port is not in the forwarding table
                     if fwdPort == -1:
                         ports = bridge.broadcast(data, socketPort)
                         PrintStatements().print_broadcasting_message(data['message']['id'], ports)
+
                     else:
-                        # the last and in this i am not sure about
+                        # make sure that we are not sending back on the same port we received
                         if fwdPort != socketPort:
                             bridge.ports[fwdPort].socket.send(json.dumps(data))
                             PrintStatements().print_forwarding_message(data['message']['id'], fwdPort)
+                        # we are not printing message (wants us the send it on same port)
                         else:
                             PrintStatements().print_not_forwarding_message(data['message']['id'])
+                # not an active port so we print we recieved it and print that we are not forwarding it
                 else:
                     PrintStatements().print_received_message(data['message']['id'], socketPort, data['source'],
                                                              data['dest'])
                     PrintStatements().print_not_forwarding_message(data['message']['id'])
 
-        #bridge.update()
-
-######################################################################
-
-
+# runs main
 main()
+
 
 

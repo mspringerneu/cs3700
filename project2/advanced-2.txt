@@ -1,0 +1,796 @@
+[  0.0003       Driver] Starting host 0aa8 on LAN 2
+[  0.0004       Driver] Starting host d5b5 on LAN 2
+[  0.0004       Driver] Starting host 90c3 on LAN 1
+[  0.0004       Driver] Starting host 3005 on LAN 3
+[  0.0004       Driver] Starting host c01f on LAN 2
+[  0.0004       Driver] Starting host 59e8 on LAN 2
+[  0.0004       Driver] Starting host 21ee on LAN 1
+[  0.0004       Driver] Starting host f36a on LAN 1
+[  0.0004       Driver] Starting host 95aa on LAN 1
+[  0.0004       Driver] Starting host ce76 on LAN 1
+[  0.0289  Bridge f8ad] ['#mspring#5344#1', '#mspring#5344#2']
+[  0.0294  Bridge f8ad] Bridge f8ad starting up
+[  0.0299  Bridge aa09] ['#mspring#5344#2', '#mspring#5344#3']
+[  0.0300  Bridge aa09] Bridge aa09 starting up
+[  0.0305  Bridge f8ad] 
+[  0.0305  Bridge f8ad] Root port: f8ad / 1
+[  2.0550    Host 59e8] Sent message 39 to ce76
+[  2.0556    Host ce76] Received message 39 from 59e8
+[  2.0557  Bridge f8ad] 
+[  2.0557  Bridge aa09] 
+[  2.0560  Bridge f8ad] Received message 39 on port 1 from 59e8 to ce76
+[  2.0560  Bridge aa09] Received message 39 on port 0 from 59e8 to ce76
+[  2.4074    Host 90c3] Sent message 62 to d5b5
+[  2.4081    Host d5b5] Received message 62 from 90c3
+[  2.4082  Bridge f8ad] 
+[  2.4083  Bridge f8ad] Broadcasting message 39 on ports: [0]
+[  2.4083  Bridge f8ad] 
+[  2.4084  Bridge f8ad] Received message 62 on port 0 from 90c3 to d5b5
+[  2.4084  Bridge aa09] 
+[  2.4085  Bridge aa09] Broadcasting message 39 on ports: [1]
+[  2.4088  Bridge aa09] 
+[  2.4089  Bridge aa09] Received message 62 on port 0 from 90c3 to d5b5
+[  2.7548    Host 59e8] Sent message 54 to 3005
+[  2.7555  Bridge f8ad] 
+[  2.7555  Bridge aa09] 
+[  2.7557    Host 3005] Received message 54 from 59e8
+[  2.7558  Bridge f8ad] Broadcasting message 62 on ports: [1]
+[  2.7558  Bridge aa09] Broadcasting message 62 on ports: [1]
+[  2.7559  Bridge f8ad] 
+[  2.7559  Bridge aa09] 
+[  2.7559  Bridge f8ad] Received message 54 on port 1 from 59e8 to 3005
+[  2.7559  Bridge aa09] Received message 54 on port 0 from 59e8 to 3005
+[  2.9435    Host 59e8] Sent message 45 to 90c3
+[  2.9441    Host 90c3] Received message 45 from 59e8
+[  2.9442  Bridge f8ad] 
+[  2.9442  Bridge aa09] 
+[  2.9458  Bridge f8ad] Broadcasting message 54 on ports: [0]
+[  2.9458  Bridge aa09] Broadcasting message 54 on ports: [1]
+[  2.9458  Bridge f8ad] 
+[  2.9459  Bridge aa09] 
+[  2.9459  Bridge f8ad] Received message 45 on port 1 from 59e8 to 90c3
+[  2.9459  Bridge aa09] Received message 45 on port 0 from 59e8 to 90c3
+[  3.0634    Host 59e8] Sent message 15 to 0aa8
+[  3.0638    Host 0aa8] Received message 15 from 59e8
+[  3.0642  Bridge f8ad] 
+[  3.0642  Bridge aa09] 
+[  3.0645  Bridge f8ad] Forwarding message 45 on port 0
+[  3.0646  Bridge aa09] Not forwarding message 45
+[  3.0646  Bridge f8ad] 
+[  3.0646  Bridge aa09] 
+[  3.0647  Bridge f8ad] Received message 15 on port 1 from 59e8 to 0aa8
+[  3.0647  Bridge aa09] Received message 15 on port 0 from 59e8 to 0aa8
+[  3.1078    Host 95aa] Sent message 53 to 3005
+[  3.1084  Bridge f8ad] 
+[  3.1084  Bridge f8ad] Broadcasting message 15 on ports: [0]
+[  3.1085  Bridge f8ad] 
+[  3.1085  Bridge f8ad] Received message 53 on port 0 from 95aa to 3005
+[  3.1085  Bridge aa09] 
+[  3.1085  Bridge aa09] Broadcasting message 15 on ports: [1]
+[  3.1086  Bridge aa09] 
+[  3.1088    Host 3005] Received message 53 from 95aa
+[  3.1088  Bridge aa09] Received message 53 on port 0 from 95aa to 3005
+[  4.5054    Host d5b5] Sent message 31 to 3005
+[  4.5062  Bridge f8ad] 
+[  4.5062  Bridge aa09] 
+[  4.5065    Host 3005] Received message 31 from d5b5
+[  4.5066  Bridge f8ad] Broadcasting message 53 on ports: [1]
+[  4.5066  Bridge aa09] Broadcasting message 53 on ports: [1]
+[  4.5066  Bridge f8ad] 
+[  4.5067  Bridge aa09] 
+[  4.5067  Bridge f8ad] Received message 31 on port 1 from d5b5 to 3005
+[  4.5067  Bridge aa09] Received message 31 on port 0 from d5b5 to 3005
+[  4.6682    Host ce76] Sent message 42 to ce76
+[  4.6685    Host ce76] Received message 42 from ce76
+[  4.6693  Bridge f8ad] 
+[  4.6694  Bridge f8ad] Broadcasting message 31 on ports: [0]
+[  4.6694  Bridge f8ad] 
+[  4.6695  Bridge f8ad] Received message 42 on port 0 from ce76 to ce76
+[  4.6754    Host 95aa] Sent message 57 to ce76
+[  4.6756    Host ce76] Received message 57 from 95aa
+[  4.6757  Bridge f8ad] 
+[  4.6758  Bridge f8ad] Not forwarding message 42
+[  4.6758  Bridge f8ad] 
+[  4.6758  Bridge f8ad] Received message 57 on port 0 from 95aa to ce76
+[  5.0400  Bridge 9e3a] ['#mspring#5344#1', '#mspring#5344#2']
+[  5.0406  Bridge 9e3a] Bridge 9e3a starting up
+[  5.0411  Bridge f8ad] 
+[  5.0412  Bridge f8ad] Not forwarding message 57
+[  5.0412  Bridge aa09] 
+[  5.0415  Bridge f8ad] 
+[  5.0415  Bridge aa09] Broadcasting message 31 on ports: [1]
+[  5.0416  Bridge f8ad] Root port: f8ad / 0
+[  5.0416  Bridge aa09] 
+[  5.0416  Bridge aa09] Root port: aa09 / 0
+[  5.0460    Host 3005] Sent message 35 to 0aa8
+[  5.0461  Bridge aa09] 
+[  5.0463    Host 0aa8] Received message 35 from 3005
+[  5.0463  Bridge aa09] Received message 35 on port 1 from 3005 to 0aa8
+[  5.0464  Bridge f8ad] 
+[  5.0464  Bridge 9e3a] 
+[  5.0464  Bridge f8ad] Disabled port: f8ad / 1
+[  5.0465  Bridge 9e3a] Received message 35 on port 1 from 3005 to 0aa8
+[  5.0466  Bridge f8ad] 
+[  5.0466  Bridge f8ad] Disabled port: f8ad / 0
+[  5.0466  Bridge f8ad] 
+[  5.0466  Bridge f8ad] Received message 35 on port 1 from 3005 to 0aa8
+[  5.1089    Host 95aa] Sent message 13 to c01f
+[  5.1094  Bridge f8ad] 
+[  5.1095    Host c01f] Received message 13 from 95aa
+[  5.1095  Bridge 9e3a] 
+[  5.1095  Bridge f8ad] Not forwarding message 35
+[  5.1098  Bridge 9e3a] Broadcasting message 35 on ports: [0]
+[  5.1098  Bridge f8ad] 
+[  5.1098  Bridge aa09] 
+[  5.1099  Bridge 9e3a] 
+[  5.1100  Bridge f8ad] Received message 35 on port 0 from 3005 to 0aa8
+[  5.1100  Bridge aa09] Broadcasting message 35 on ports: [0]
+[  5.1100  Bridge 9e3a] Received message 13 on port 0 from 95aa to c01f
+[  5.1100  Bridge f8ad] 
+[  5.1100  Bridge aa09] 
+[  5.1100  Bridge f8ad] Not forwarding message 35
+[  5.1100  Bridge aa09] Received message 13 on port 0 from 95aa to c01f
+[  5.1101  Bridge f8ad] 
+[  5.1101  Bridge f8ad] Received message 13 on port 0 from 95aa to c01f
+[  5.2092    Host 3005] Sent message 20 to 59e8
+[  5.2096  Bridge aa09] 
+[  5.2099    Host 59e8] Received message 20 from 3005
+[  5.2100  Bridge aa09] Broadcasting message 13 on ports: [1]
+[  5.2101  Bridge aa09] 
+[  5.2102  Bridge f8ad] 
+[  5.2102  Bridge aa09] Received message 20 on port 1 from 3005 to 59e8
+[  5.2102  Bridge 9e3a] 
+[  5.2103  Bridge f8ad] Not forwarding message 13
+[  5.2106  Bridge 9e3a] Broadcasting message 13 on ports: [1]
+[  5.2107  Bridge f8ad] 
+[  5.2107  Bridge 9e3a] 
+[  5.2107  Bridge f8ad] Received message 13 on port 1 from 95aa to c01f
+[  5.2108  Bridge 9e3a] Received message 20 on port 1 from 3005 to 59e8
+[  5.2108  Bridge f8ad] 
+[  5.2109  Bridge f8ad] Not forwarding message 13
+[  5.2109  Bridge f8ad] 
+[  5.2110  Bridge f8ad] Received message 20 on port 1 from 3005 to 59e8
+[  5.4575    Host c01f] Sent message 68 to 21ee
+[  5.4577  Bridge f8ad] 
+[  5.4578  Bridge aa09] 
+[  5.4580    Host 21ee] Received message 68 from c01f
+[  5.4581  Bridge 9e3a] 
+[  5.4581  Bridge f8ad] Not forwarding message 20
+[  5.4581  Bridge aa09] Broadcasting message 20 on ports: [0]
+[  5.4581  Bridge 9e3a] Broadcasting message 20 on ports: [0]
+[  5.4582  Bridge f8ad] 
+[  5.4582  Bridge aa09] 
+[  5.4582  Bridge 9e3a] 
+[  5.4582  Bridge f8ad] Received message 20 on port 0 from 3005 to 59e8
+[  5.4582  Bridge aa09] Received message 68 on port 0 from c01f to 21ee
+[  5.4582  Bridge 9e3a] Received message 68 on port 1 from c01f to 21ee
+[  5.4583  Bridge f8ad] 
+[  5.4583  Bridge f8ad] Not forwarding message 20
+[  5.4583  Bridge f8ad] 
+[  5.4583  Bridge f8ad] Received message 68 on port 1 from c01f to 21ee
+[  5.4755    Host 90c3] Sent message 49 to 0aa8
+[  5.4757  Bridge f8ad] 
+[  5.4758    Host 0aa8] Received message 49 from 90c3
+[  5.4759  Bridge 9e3a] 
+[  5.4759  Bridge f8ad] Not forwarding message 68
+[  5.4759  Bridge 9e3a] Broadcasting message 68 on ports: [0]
+[  5.4759  Bridge f8ad] 
+[  5.4759  Bridge 9e3a] 
+[  5.4760  Bridge f8ad] Received message 68 on port 0 from c01f to 21ee
+[  5.4760  Bridge aa09] 
+[  5.4760  Bridge 9e3a] Received message 49 on port 0 from 90c3 to 0aa8
+[  5.4760  Bridge f8ad] 
+[  5.4760  Bridge aa09] Broadcasting message 68 on ports: [1]
+[  5.4762  Bridge f8ad] Not forwarding message 68
+[  5.4762  Bridge aa09] 
+[  5.4763  Bridge f8ad] 
+[  5.4763  Bridge aa09] Received message 49 on port 0 from 90c3 to 0aa8
+[  5.4763  Bridge f8ad] Received message 49 on port 0 from 90c3 to 0aa8
+[  5.5634    Host c01f] Sent message 6 to ce76
+[  5.5639  Bridge f8ad] 
+[  5.5639  Bridge aa09] 
+[  5.5642    Host ce76] Received message 6 from c01f
+[  5.5642  Bridge 9e3a] 
+[  5.5643  Bridge f8ad] Not forwarding message 49
+[  5.5643  Bridge aa09] Broadcasting message 49 on ports: [1]
+[  5.5651  Bridge 9e3a] Broadcasting message 49 on ports: [1]
+[  5.5651  Bridge f8ad] 
+[  5.5651  Bridge aa09] 
+[  5.5652  Bridge 9e3a] 
+[  5.5652  Bridge f8ad] Received message 49 on port 1 from 90c3 to 0aa8
+[  5.5652  Bridge aa09] Received message 6 on port 0 from c01f to ce76
+[  5.5652  Bridge 9e3a] Received message 6 on port 1 from c01f to ce76
+[  5.5653  Bridge f8ad] 
+[  5.5653  Bridge f8ad] Not forwarding message 49
+[  5.5653  Bridge f8ad] 
+[  5.5654  Bridge f8ad] Received message 6 on port 1 from c01f to ce76
+[  5.5663    Host 0aa8] Sent message 43 to 59e8
+[  5.5665    Host 59e8] Received message 43 from 0aa8
+[  5.5666  Bridge f8ad] 
+[  5.5666  Bridge aa09] 
+[  5.5671  Bridge 9e3a] 
+[  5.5671  Bridge f8ad] Not forwarding message 6
+[  5.5671  Bridge aa09] Broadcasting message 6 on ports: [1]
+[  5.5671  Bridge 9e3a] Broadcasting message 6 on ports: [0]
+[  5.5672  Bridge f8ad] 
+[  5.5672  Bridge aa09] 
+[  5.5672  Bridge 9e3a] 
+[  5.5672  Bridge f8ad] Received message 6 on port 0 from c01f to ce76
+[  5.5672  Bridge aa09] Received message 43 on port 0 from 0aa8 to 59e8
+[  5.5673  Bridge 9e3a] Received message 43 on port 1 from 0aa8 to 59e8
+[  5.5673  Bridge f8ad] 
+[  5.5673  Bridge f8ad] Not forwarding message 6
+[  5.5674  Bridge f8ad] 
+[  5.5674  Bridge f8ad] Received message 43 on port 1 from 0aa8 to 59e8
+[  5.7607    Host 3005] Sent message 25 to 95aa
+[  5.7611  Bridge aa09] 
+[  5.7616  Bridge aa09] Broadcasting message 43 on ports: [1]
+[  5.7617  Bridge aa09] 
+[  5.7617  Bridge f8ad] 
+[  5.7618  Bridge aa09] Received message 25 on port 1 from 3005 to 95aa
+[  5.7618  Bridge 9e3a] 
+[  5.7618  Bridge f8ad] Not forwarding message 43
+[  5.7621    Host 95aa] Received message 25 from 3005
+[  5.7622  Bridge 9e3a] Broadcasting message 43 on ports: [0]
+[  5.7623  Bridge f8ad] 
+[  5.7623  Bridge 9e3a] 
+[  5.7623  Bridge f8ad] Received message 43 on port 0 from 0aa8 to 59e8
+[  5.7624  Bridge 9e3a] Received message 25 on port 1 from 3005 to 95aa
+[  5.7624  Bridge f8ad] 
+[  5.7625  Bridge f8ad] Not forwarding message 43
+[  5.7625  Bridge f8ad] 
+[  5.7626  Bridge f8ad] Received message 25 on port 1 from 3005 to 95aa
+[  6.1644    Host 95aa] Sent message 56 to 95aa
+[  6.1646    Host 95aa] Received message 56 from 95aa
+[  6.1647  Bridge f8ad] 
+[  6.1647  Bridge 9e3a] 
+[  6.1647  Bridge f8ad] Not forwarding message 25
+[  6.1647  Bridge 9e3a] Forwarding message 25 on port 0
+[  6.1648  Bridge f8ad] 
+[  6.1648  Bridge 9e3a] 
+[  6.1648  Bridge f8ad] Received message 25 on port 0 from 3005 to 95aa
+[  6.1648  Bridge 9e3a] Received message 56 on port 0 from 95aa to 95aa
+[  6.1648  Bridge f8ad] 
+[  6.1649  Bridge f8ad] Not forwarding message 25
+[  6.1649  Bridge f8ad] 
+[  6.1649  Bridge f8ad] Received message 56 on port 0 from 95aa to 95aa
+[  6.1964    Host 3005] Sent message 34 to d5b5
+[  6.1966  Bridge aa09] 
+[  6.1967    Host d5b5] Received message 34 from 3005
+[  6.1967  Bridge aa09] Forwarding message 25 on port 0
+[  6.1968  Bridge aa09] 
+[  6.1968  Bridge aa09] Received message 34 on port 1 from 3005 to d5b5
+[  6.1968  Bridge f8ad] 
+[  6.1968  Bridge f8ad] Not forwarding message 56
+[  6.1968  Bridge 9e3a] 
+[  6.1969  Bridge f8ad] 
+[  6.1969  Bridge 9e3a] Not forwarding message 56
+[  6.1969  Bridge f8ad] Received message 34 on port 1 from 3005 to d5b5
+[  6.1970  Bridge 9e3a] 
+[  6.1970  Bridge 9e3a] Received message 34 on port 1 from 3005 to d5b5
+[  6.1971  Bridge f8ad] 
+[  6.1971  Bridge f8ad] Not forwarding message 34
+[  6.1971  Bridge f8ad] 
+[  6.1971  Bridge f8ad] Received message 34 on port 0 from 3005 to d5b5
+[  6.2185    Host f36a] Sent message 50 to ce76
+[  6.2186    Host ce76] Received message 50 from f36a
+[  6.2187  Bridge f8ad] 
+[  6.2188  Bridge 9e3a] 
+[  6.2188  Bridge f8ad] Not forwarding message 34
+[  6.2188  Bridge 9e3a] Broadcasting message 34 on ports: [0]
+[  6.2188  Bridge f8ad] 
+[  6.2188  Bridge 9e3a] 
+[  6.2189  Bridge f8ad] Received message 50 on port 0 from f36a to ce76
+[  6.2189  Bridge aa09] 
+[  6.2189  Bridge 9e3a] Received message 50 on port 0 from f36a to ce76
+[  6.2189  Bridge aa09] Broadcasting message 34 on ports: [0]
+[  6.2190  Bridge aa09] 
+[  6.2190  Bridge aa09] Received message 50 on port 0 from f36a to ce76
+[  6.2974    Host 3005] Sent message 67 to f36a
+[  6.2976  Bridge aa09] 
+[  6.2985  Bridge f8ad] 
+[  6.2985  Bridge aa09] Broadcasting message 50 on ports: [1]
+[  6.2989    Host f36a] Received message 67 from 3005
+[  6.2992  Bridge 9e3a] 
+[  6.2992  Bridge f8ad] Not forwarding message 50
+[  6.2992  Bridge aa09] 
+[  6.2995  Bridge 9e3a] Broadcasting message 50 on ports: [1]
+[  6.2995  Bridge f8ad] 
+[  6.2995  Bridge aa09] Received message 67 on port 1 from 3005 to f36a
+[  6.2995  Bridge 9e3a] 
+[  6.2996  Bridge f8ad] Received message 50 on port 1 from f36a to ce76
+[  6.2996  Bridge 9e3a] Received message 67 on port 1 from 3005 to f36a
+[  6.2996  Bridge f8ad] 
+[  6.2996  Bridge f8ad] Not forwarding message 50
+[  6.2997  Bridge f8ad] 
+[  6.2997  Bridge f8ad] Received message 67 on port 1 from 3005 to f36a
+[  6.3053    Host 59e8] Sent message 59 to 90c3
+[  6.3055  Bridge f8ad] 
+[  6.3055  Bridge aa09] 
+[  6.3056    Host 90c3] Received message 59 from 59e8
+[  6.3057  Bridge 9e3a] 
+[  6.3057  Bridge f8ad] Not forwarding message 67
+[  6.3057  Bridge aa09] Forwarding message 67 on port 0
+[  6.3057  Bridge 9e3a] Forwarding message 67 on port 0
+[  6.3058  Bridge f8ad] 
+[  6.3058  Bridge aa09] 
+[  6.3058  Bridge 9e3a] 
+[  6.3058  Bridge f8ad] Received message 67 on port 0 from 3005 to f36a
+[  6.3058  Bridge aa09] Received message 59 on port 0 from 59e8 to 90c3
+[  6.3058  Bridge 9e3a] Received message 59 on port 1 from 59e8 to 90c3
+[  6.3059  Bridge f8ad] 
+[  6.3059  Bridge f8ad] Not forwarding message 67
+[  6.3059  Bridge f8ad] 
+[  6.3060  Bridge f8ad] Received message 59 on port 1 from 59e8 to 90c3
+[  6.4199    Host 0aa8] Sent message 52 to 90c3
+[  6.4201  Bridge f8ad] 
+[  6.4201  Bridge aa09] 
+[  6.4202    Host 90c3] Received message 52 from 0aa8
+[  6.4203  Bridge 9e3a] 
+[  6.4203  Bridge f8ad] Not forwarding message 59
+[  6.4203  Bridge aa09] Not forwarding message 59
+[  6.4203  Bridge 9e3a] Forwarding message 59 on port 0
+[  6.4204  Bridge f8ad] 
+[  6.4204  Bridge aa09] 
+[  6.4204  Bridge 9e3a] 
+[  6.4204  Bridge f8ad] Received message 59 on port 0 from 59e8 to 90c3
+[  6.4205  Bridge aa09] Received message 52 on port 0 from 0aa8 to 90c3
+[  6.4205  Bridge 9e3a] Received message 52 on port 1 from 0aa8 to 90c3
+[  6.4205  Bridge f8ad] 
+[  6.4205  Bridge f8ad] Not forwarding message 59
+[  6.4206  Bridge f8ad] 
+[  6.4206  Bridge f8ad] Received message 52 on port 1 from 0aa8 to 90c3
+[  6.4214    Host 59e8] Sent message 23 to ce76
+[  6.4216  Bridge f8ad] 
+[  6.4216  Bridge aa09] 
+[  6.4220    Host ce76] Received message 23 from 59e8
+[  6.4220  Bridge 9e3a] 
+[  6.4221  Bridge f8ad] Not forwarding message 52
+[  6.4221  Bridge aa09] Not forwarding message 52
+[  6.4221  Bridge 9e3a] Forwarding message 52 on port 0
+[  6.4221  Bridge f8ad] 
+[  6.4222  Bridge aa09] 
+[  6.4222  Bridge 9e3a] 
+[  6.4222  Bridge f8ad] Received message 52 on port 0 from 0aa8 to 90c3
+[  6.4222  Bridge aa09] Received message 23 on port 0 from 59e8 to ce76
+[  6.4222  Bridge 9e3a] Received message 23 on port 1 from 59e8 to ce76
+[  6.4223  Bridge f8ad] 
+[  6.4223  Bridge f8ad] Not forwarding message 52
+[  6.4223  Bridge f8ad] 
+[  6.4224  Bridge f8ad] Received message 23 on port 1 from 59e8 to ce76
+[  6.5078    Host 95aa] Sent message 17 to 95aa
+[  6.5082    Host 95aa] Received message 17 from 95aa
+[  6.5091  Bridge f8ad] 
+[  6.5099  Bridge 9e3a] 
+[  6.5100  Bridge f8ad] Not forwarding message 23
+[  6.5107  Bridge 9e3a] Broadcasting message 23 on ports: [0]
+[  6.5108  Bridge f8ad] 
+[  6.5108  Bridge 9e3a] 
+[  6.5109  Bridge f8ad] Received message 23 on port 0 from 59e8 to ce76
+[  6.5109  Bridge 9e3a] Received message 17 on port 0 from 95aa to 95aa
+[  6.5110  Bridge f8ad] 
+[  6.5110  Bridge f8ad] Not forwarding message 23
+[  6.5110  Bridge f8ad] 
+[  6.5111  Bridge f8ad] Received message 17 on port 0 from 95aa to 95aa
+[  6.9920    Host 95aa] Sent message 37 to 95aa
+[  6.9922    Host 95aa] Received message 37 from 95aa
+[  6.9923  Bridge f8ad] 
+[  6.9923  Bridge 9e3a] 
+[  6.9923  Bridge f8ad] Not forwarding message 17
+[  6.9923  Bridge 9e3a] Not forwarding message 17
+[  6.9923  Bridge f8ad] 
+[  6.9923  Bridge 9e3a] 
+[  6.9924  Bridge f8ad] Received message 37 on port 0 from 95aa to 95aa
+[  6.9924  Bridge 9e3a] Received message 37 on port 0 from 95aa to 95aa
+[  7.0282  Bridge 1000] ['#mspring#5344#1', '#mspring#5344#2', '#mspring#5344#3']
+[  7.0287  Bridge 1000] Bridge 1000 starting up
+[  7.0297  Bridge 9e3a] 
+[  7.0297  Bridge aa09] 
+[  7.0297  Bridge 9e3a] Not forwarding message 37
+[  7.0297  Bridge aa09] Broadcasting message 23 on ports: [1]
+[  7.0297  Bridge 9e3a] 
+[  7.0298  Bridge aa09] 
+[  7.0298  Bridge 9e3a] Root port: 9e3a / 0
+[  7.0298  Bridge aa09] Disabled port: aa09 / 1
+[  7.1832    Host 0aa8] Sent message 66 to c01f
+[  7.1834    Host c01f] Received message 66 from 0aa8
+[  7.1835  Bridge f8ad] 
+[  7.1835  Bridge aa09] 
+[  7.1835  Bridge 9e3a] 
+[  7.1836  Bridge 1000] 
+[  7.1838  Bridge f8ad] Not forwarding message 37
+[  7.1838  Bridge aa09] Disabled port: aa09 / 0
+[  7.1838  Bridge 9e3a] Disabled port: 9e3a / 1
+[  7.1838  Bridge 1000] Received message 66 on port 1 from 0aa8 to c01f
+[  7.1839  Bridge f8ad] 
+[  7.1839  Bridge aa09] 
+[  7.1839  Bridge 9e3a] 
+[  7.1839  Bridge f8ad] Received message 66 on port 1 from 0aa8 to c01f
+[  7.1839  Bridge aa09] Received message 66 on port 0 from 0aa8 to c01f
+[  7.1839  Bridge 9e3a] Disabled port: 9e3a / 0
+[  7.1839  Bridge 9e3a] 
+[  7.1840  Bridge 9e3a] Received message 66 on port 1 from 0aa8 to c01f
+[  7.7003    Host 59e8] Sent message 12 to 3005
+[  7.7008  Bridge f8ad] 
+[  7.7008  Bridge aa09] 
+[  7.7008  Bridge 9e3a] 
+[  7.7011  Bridge 1000] 
+[  7.7015    Host 3005] Received message 12 from 59e8
+[  7.7016  Bridge f8ad] Not forwarding message 66
+[  7.7016  Bridge aa09] Not forwarding message 66
+[  7.7016  Bridge 9e3a] Not forwarding message 66
+[  7.7016  Bridge 1000] Broadcasting message 66 on ports: [0, 2]
+[  7.7017  Bridge f8ad] 
+[  7.7017  Bridge aa09] 
+[  7.7017  Bridge 9e3a] 
+[  7.7017  Bridge 1000] 
+[  7.7018  Bridge f8ad] Received message 66 on port 0 from 0aa8 to c01f
+[  7.7018  Bridge aa09] Received message 66 on port 1 from 0aa8 to c01f
+[  7.7018  Bridge 9e3a] Received message 66 on port 0 from 0aa8 to c01f
+[  7.7018  Bridge 1000] Received message 12 on port 1 from 59e8 to 3005
+[  7.7019  Bridge f8ad] 
+[  7.7019  Bridge aa09] 
+[  7.7019  Bridge 9e3a] 
+[  7.7019  Bridge f8ad] Not forwarding message 66
+[  7.7019  Bridge aa09] Not forwarding message 66
+[  7.7020  Bridge 9e3a] Not forwarding message 66
+[  7.7020  Bridge f8ad] 
+[  7.7020  Bridge aa09] 
+[  7.7020  Bridge 9e3a] 
+[  7.7021  Bridge f8ad] Received message 12 on port 1 from 59e8 to 3005
+[  7.7021  Bridge aa09] Received message 12 on port 0 from 59e8 to 3005
+[  7.7021  Bridge 9e3a] Received message 12 on port 1 from 59e8 to 3005
+[  7.7514    Host d5b5] Sent message 40 to 95aa
+[  7.7519  Bridge f8ad] 
+[  7.7519  Bridge aa09] 
+[  7.7519  Bridge 9e3a] 
+[  7.7522    Host 95aa] Received message 40 from d5b5
+[  7.7523  Bridge 1000] 
+[  7.7528  Bridge f8ad] Not forwarding message 12
+[  7.7529  Bridge aa09] Not forwarding message 12
+[  7.7529  Bridge 9e3a] Not forwarding message 12
+[  7.7529  Bridge 1000] Broadcasting message 12 on ports: [0, 2]
+[  7.7530  Bridge f8ad] 
+[  7.7530  Bridge aa09] 
+[  7.7530  Bridge 9e3a] 
+[  7.7530  Bridge 1000] 
+[  7.7531  Bridge f8ad] Received message 12 on port 0 from 59e8 to 3005
+[  7.7531  Bridge aa09] Received message 12 on port 1 from 59e8 to 3005
+[  7.7531  Bridge 9e3a] Received message 12 on port 0 from 59e8 to 3005
+[  7.7532  Bridge 1000] Received message 40 on port 1 from d5b5 to 95aa
+[  7.7532  Bridge f8ad] 
+[  7.7532  Bridge aa09] 
+[  7.7532  Bridge 9e3a] 
+[  7.7533  Bridge f8ad] Not forwarding message 12
+[  7.7533  Bridge aa09] Not forwarding message 12
+[  7.7533  Bridge 9e3a] Not forwarding message 12
+[  7.7534  Bridge f8ad] 
+[  7.7534  Bridge aa09] 
+[  7.7534  Bridge 9e3a] 
+[  7.7535  Bridge f8ad] Received message 40 on port 1 from d5b5 to 95aa
+[  7.7535  Bridge aa09] Received message 40 on port 0 from d5b5 to 95aa
+[  7.7535  Bridge 9e3a] Received message 40 on port 1 from d5b5 to 95aa
+[  8.0011        LAN 1] Bridge disconnected
+[  8.0011  Bridge f8ad] 
+[  8.0011  Bridge f8ad] Bridge disconnected
+[  8.0013        LAN 2] Bridge disconnected
+[  8.0013  Bridge f8ad] Not forwarding message 40
+[  8.0013        LAN 1] Bridge disconnected
+[  8.0014        LAN 2] Bridge disconnected
+[  8.0014  Bridge 1000] 
+[  8.0014        LAN 3] Bridge disconnected
+[  8.0014  Bridge 1000] Bridge disconnected
+[  8.0015  Bridge f8ad] 
+[  8.0015  Bridge 1000] Broadcasting message 40 on ports: [0, 2]
+[  8.0016  Bridge f8ad] Received message 40 on port 0 from d5b5 to 95aa
+[  8.0016  Bridge 1000] 
+[  8.0016  Bridge f8ad] 
+[  8.0016  Bridge 1000] Bridge disconnected
+[  8.0017  Bridge f8ad] Not forwarding message 40
+[  8.0017  Bridge f8ad] 
+[  8.0017  Bridge f8ad] Bridge disconnected
+[  8.0115    Host 90c3] Sent message 7 to ce76
+[  8.0117    Host ce76] Received message 7 from 90c3
+[  8.0118  Bridge 9e3a] 
+[  8.0118  Bridge 9e3a] Not forwarding message 40
+[  8.0118  Bridge 9e3a] 
+[  8.0119  Bridge 9e3a] Received message 40 on port 0 from d5b5 to 95aa
+[  8.0119  Bridge 9e3a] 
+[  8.0119  Bridge 9e3a] Not forwarding message 40
+[  8.0120  Bridge 9e3a] 
+[  8.0120  Bridge 9e3a] Received message 7 on port 0 from 90c3 to ce76
+[  8.1843    Host 21ee] Sent message 69 to 95aa
+[  8.1844    Host 95aa] Received message 69 from 21ee
+[  8.1845  Bridge 9e3a] 
+[  8.1845  Bridge 9e3a] Not forwarding message 7
+[  8.1845  Bridge 9e3a] 
+[  8.1845  Bridge 9e3a] Received message 69 on port 0 from 21ee to 95aa
+[  8.5343    Host 3005] Sent message 27 to c01f
+[  8.5345  Bridge aa09] 
+[  8.5345  Bridge aa09] Not forwarding message 40
+[  8.5345  Bridge aa09] 
+[  8.5346  Bridge aa09] Received message 40 on port 1 from d5b5 to 95aa
+[  8.5346  Bridge aa09] 
+[  8.5346  Bridge aa09] Not forwarding message 40
+[  8.5346  Bridge aa09] 
+[  8.5346  Bridge aa09] Received message 27 on port 1 from 3005 to c01f
+[  8.6960    Host 95aa] Sent message 65 to 3005
+[  8.6961  Bridge 9e3a] 
+[  8.6962  Bridge 9e3a] Not forwarding message 69
+[  8.6962  Bridge 9e3a] 
+[  8.6962  Bridge 9e3a] Received message 65 on port 0 from 95aa to 3005
+[  8.8093    Host 3005] Sent message 28 to 90c3
+[  8.8096  Bridge aa09] 
+[  8.8096  Bridge aa09] Not forwarding message 27
+[  8.8096  Bridge aa09] 
+[  8.8097  Bridge aa09] Received message 28 on port 1 from 3005 to 90c3
+[  8.8375    Host 95aa] Sent message 14 to 59e8
+[  8.8377  Bridge 9e3a] 
+[  8.8378  Bridge 9e3a] Not forwarding message 65
+[  8.8378  Bridge 9e3a] 
+[  8.8378  Bridge 9e3a] Received message 14 on port 0 from 95aa to 59e8
+[  8.8798    Host 3005] Sent message 1 to 90c3
+[  8.8800  Bridge aa09] 
+[  8.8805  Bridge aa09] Not forwarding message 28
+[  8.8810  Bridge aa09] 
+[  8.8810  Bridge aa09] Received message 1 on port 1 from 3005 to 90c3
+[  9.1191    Host 21ee] Sent message 19 to 95aa
+[  9.1195    Host 95aa] Received message 19 from 21ee
+[  9.1195  Bridge 9e3a] 
+[  9.1196  Bridge 9e3a] Not forwarding message 14
+[  9.1197  Bridge 9e3a] 
+[  9.1197  Bridge 9e3a] Received message 19 on port 0 from 21ee to 95aa
+[  9.3892    Host 95aa] Sent message 48 to c01f
+[  9.3896  Bridge 9e3a] 
+[  9.3897  Bridge 9e3a] Not forwarding message 19
+[  9.3897  Bridge 9e3a] 
+[  9.3898  Bridge 9e3a] Received message 48 on port 0 from 95aa to c01f
+[  9.4651    Host 59e8] Sent message 0 to 21ee
+[  9.4655  Bridge aa09] 
+[  9.4655  Bridge 9e3a] 
+[  9.4656  Bridge aa09] Not forwarding message 1
+[  9.4656  Bridge 9e3a] Not forwarding message 48
+[  9.4656  Bridge aa09] 
+[  9.4657  Bridge 9e3a] 
+[  9.4657  Bridge aa09] Received message 0 on port 0 from 59e8 to 21ee
+[  9.4657  Bridge 9e3a] Received message 0 on port 1 from 59e8 to 21ee
+[  9.7692    Host d5b5] Sent message 47 to d5b5
+[  9.7695    Host d5b5] Received message 47 from d5b5
+[  9.7696  Bridge aa09] 
+[  9.7696  Bridge 9e3a] 
+[  9.7696  Bridge aa09] Not forwarding message 0
+[  9.7696  Bridge 9e3a] Not forwarding message 0
+[  9.7697  Bridge aa09] 
+[  9.7697  Bridge 9e3a] 
+[  9.7697  Bridge aa09] Received message 47 on port 0 from d5b5 to d5b5
+[  9.7697  Bridge 9e3a] Received message 47 on port 1 from d5b5 to d5b5
+[  9.8936    Host 21ee] Sent message 30 to d5b5
+[  9.8940  Bridge 9e3a] 
+[  9.8940  Bridge 9e3a] Not forwarding message 47
+[  9.8941  Bridge 9e3a] 
+[  9.8941  Bridge 9e3a] Received message 30 on port 0 from 21ee to d5b5
+[  9.9025    Host 3005] Sent message 18 to d5b5
+[  9.9028  Bridge aa09] 
+[  9.9028  Bridge aa09] Not forwarding message 47
+[  9.9029  Bridge aa09] 
+[  9.9029  Bridge aa09] Received message 18 on port 1 from 3005 to d5b5
+[  9.9207    Host 0aa8] Sent message 8 to 0aa8
+[  9.9210    Host 0aa8] Received message 8 from 0aa8
+[  9.9211  Bridge aa09] 
+[  9.9211  Bridge 9e3a] 
+[  9.9211  Bridge aa09] Not forwarding message 18
+[  9.9211  Bridge 9e3a] Not forwarding message 30
+[  9.9212  Bridge aa09] 
+[  9.9212  Bridge 9e3a] 
+[  9.9213  Bridge aa09] Received message 8 on port 0 from 0aa8 to 0aa8
+[  9.9213  Bridge 9e3a] Received message 8 on port 1 from 0aa8 to 0aa8
+[ 10.1218    Host c01f] Sent message 44 to 90c3
+[ 10.1227  Bridge aa09] 
+[ 10.1227  Bridge 9e3a] 
+[ 10.1227  Bridge aa09] Not forwarding message 8
+[ 10.1228  Bridge 9e3a] Not forwarding message 8
+[ 10.1228  Bridge aa09] 
+[ 10.1228  Bridge 9e3a] 
+[ 10.1229  Bridge aa09] Received message 44 on port 0 from c01f to 90c3
+[ 10.1229  Bridge 9e3a] Received message 44 on port 1 from c01f to 90c3
+[ 10.1559    Host d5b5] Sent message 10 to f36a
+[ 10.1562  Bridge aa09] 
+[ 10.1563  Bridge 9e3a] 
+[ 10.1563  Bridge aa09] Not forwarding message 44
+[ 10.1564  Bridge 9e3a] Not forwarding message 44
+[ 10.1564  Bridge aa09] 
+[ 10.1564  Bridge 9e3a] 
+[ 10.1565  Bridge aa09] Received message 10 on port 0 from d5b5 to f36a
+[ 10.1565  Bridge 9e3a] Received message 10 on port 1 from d5b5 to f36a
+[ 10.3615    Host 90c3] Sent message 11 to 95aa
+[ 10.3618    Host 95aa] Received message 11 from 90c3
+[ 10.3619  Bridge 9e3a] 
+[ 10.3620  Bridge 9e3a] Not forwarding message 10
+[ 10.3620  Bridge 9e3a] 
+[ 10.3621  Bridge 9e3a] Received message 11 on port 0 from 90c3 to 95aa
+[ 10.6552    Host 59e8] Sent message 51 to 0aa8
+[ 10.6557    Host 0aa8] Received message 51 from 59e8
+[ 10.6558  Bridge aa09] 
+[ 10.6558  Bridge 9e3a] 
+[ 10.6559  Bridge aa09] Not forwarding message 10
+[ 10.6559  Bridge 9e3a] Not forwarding message 11
+[ 10.6559  Bridge aa09] 
+[ 10.6560  Bridge 9e3a] 
+[ 10.6560  Bridge aa09] Received message 51 on port 0 from 59e8 to 0aa8
+[ 10.6560  Bridge 9e3a] Received message 51 on port 1 from 59e8 to 0aa8
+[ 10.8896    Host d5b5] Sent message 61 to ce76
+[ 10.8901  Bridge aa09] 
+[ 10.8901  Bridge 9e3a] 
+[ 10.8902  Bridge aa09] Not forwarding message 51
+[ 10.8902  Bridge 9e3a] Not forwarding message 51
+[ 10.8902  Bridge aa09] 
+[ 10.8903  Bridge 9e3a] 
+[ 10.8903  Bridge aa09] Received message 61 on port 0 from d5b5 to ce76
+[ 10.8904  Bridge 9e3a] Received message 61 on port 1 from d5b5 to ce76
+[ 10.9322    Host 3005] Sent message 63 to 95aa
+[ 10.9326  Bridge aa09] 
+[ 10.9327  Bridge aa09] Not forwarding message 61
+[ 10.9327  Bridge aa09] 
+[ 10.9327  Bridge aa09] Received message 63 on port 1 from 3005 to 95aa
+[ 11.1196    Host c01f] Sent message 16 to c01f
+[ 11.1200    Host c01f] Received message 16 from c01f
+[ 11.1202  Bridge aa09] 
+[ 11.1202  Bridge 9e3a] 
+[ 11.1202  Bridge aa09] Not forwarding message 63
+[ 11.1203  Bridge 9e3a] Not forwarding message 61
+[ 11.1203  Bridge aa09] 
+[ 11.1204  Bridge 9e3a] 
+[ 11.1204  Bridge aa09] Received message 16 on port 0 from c01f to c01f
+[ 11.1205  Bridge 9e3a] Received message 16 on port 1 from c01f to c01f
+[ 11.3549    Host c01f] Sent message 60 to 95aa
+[ 11.3554  Bridge aa09] 
+[ 11.3555  Bridge 9e3a] 
+[ 11.3555  Bridge aa09] Not forwarding message 16
+[ 11.3556  Bridge 9e3a] Not forwarding message 16
+[ 11.3556  Bridge aa09] 
+[ 11.3556  Bridge 9e3a] 
+[ 11.3557  Bridge aa09] Received message 60 on port 0 from c01f to 95aa
+[ 11.3557  Bridge 9e3a] Received message 60 on port 1 from c01f to 95aa
+[ 11.6216    Host 90c3] Sent message 21 to 95aa
+[ 11.6219    Host 95aa] Received message 21 from 90c3
+[ 11.6220  Bridge 9e3a] 
+[ 11.6221  Bridge 9e3a] Not forwarding message 60
+[ 11.6221  Bridge 9e3a] 
+[ 11.6222  Bridge 9e3a] Received message 21 on port 0 from 90c3 to 95aa
+[ 11.7595    Host 90c3] Sent message 9 to 3005
+[ 11.7599  Bridge 9e3a] 
+[ 11.7599  Bridge 9e3a] Not forwarding message 21
+[ 11.7599  Bridge 9e3a] 
+[ 11.7600  Bridge 9e3a] Received message 9 on port 0 from 90c3 to 3005
+[ 12.1791    Host 59e8] Sent message 33 to 0aa8
+[ 12.1795    Host 0aa8] Received message 33 from 59e8
+[ 12.1795  Bridge aa09] 
+[ 12.1796  Bridge 9e3a] 
+[ 12.1796  Bridge aa09] Not forwarding message 60
+[ 12.1796  Bridge 9e3a] Not forwarding message 9
+[ 12.1797  Bridge aa09] 
+[ 12.1797  Bridge 9e3a] 
+[ 12.1797  Bridge aa09] Received message 33 on port 0 from 59e8 to 0aa8
+[ 12.1797  Bridge 9e3a] Received message 33 on port 1 from 59e8 to 0aa8
+[ 12.2507    Host ce76] Sent message 55 to 0aa8
+[ 12.2510  Bridge 9e3a] 
+[ 12.2510  Bridge 9e3a] Not forwarding message 33
+[ 12.2511  Bridge 9e3a] 
+[ 12.2511  Bridge 9e3a] Received message 55 on port 0 from ce76 to 0aa8
+[ 12.3190    Host c01f] Sent message 32 to 21ee
+[ 12.3194  Bridge aa09] 
+[ 12.3194  Bridge 9e3a] 
+[ 12.3195  Bridge aa09] Not forwarding message 33
+[ 12.3195  Bridge 9e3a] Not forwarding message 55
+[ 12.3195  Bridge aa09] 
+[ 12.3195  Bridge 9e3a] 
+[ 12.3196  Bridge aa09] Received message 32 on port 0 from c01f to 21ee
+[ 12.3196  Bridge 9e3a] Received message 32 on port 1 from c01f to 21ee
+[ 12.3879    Host ce76] Sent message 41 to c01f
+[ 12.3882  Bridge 9e3a] 
+[ 12.3883  Bridge 9e3a] Not forwarding message 32
+[ 12.3884  Bridge 9e3a] 
+[ 12.3884  Bridge 9e3a] Received message 41 on port 0 from ce76 to c01f
+[ 12.6096    Host d5b5] Sent message 5 to 0aa8
+[ 12.6099    Host 0aa8] Received message 5 from d5b5
+[ 12.6100  Bridge aa09] 
+[ 12.6101  Bridge 9e3a] 
+[ 12.6101  Bridge aa09] Not forwarding message 32
+[ 12.6101  Bridge 9e3a] Not forwarding message 41
+[ 12.6102  Bridge aa09] 
+[ 12.6102  Bridge 9e3a] 
+[ 12.6102  Bridge aa09] Received message 5 on port 0 from d5b5 to 0aa8
+[ 12.6103  Bridge 9e3a] Received message 5 on port 1 from d5b5 to 0aa8
+[ 12.6440    Host ce76] Sent message 36 to 59e8
+[ 12.6444  Bridge 9e3a] 
+[ 12.6445  Bridge 9e3a] Not forwarding message 5
+[ 12.6445  Bridge 9e3a] 
+[ 12.6446  Bridge 9e3a] Received message 36 on port 0 from ce76 to 59e8
+[ 12.6933    Host 95aa] Sent message 2 to 90c3
+[ 12.6937    Host 90c3] Received message 2 from 95aa
+[ 12.6945  Bridge 9e3a] 
+[ 12.6946  Bridge 9e3a] Not forwarding message 36
+[ 12.6948  Bridge 9e3a] 
+[ 12.6953  Bridge 9e3a] Received message 2 on port 0 from 95aa to 90c3
+[ 12.7923    Host c01f] Sent message 3 to 59e8
+[ 12.7927    Host 59e8] Received message 3 from c01f
+[ 12.7928  Bridge aa09] 
+[ 12.7928  Bridge 9e3a] 
+[ 12.7928  Bridge aa09] Not forwarding message 5
+[ 12.7928  Bridge 9e3a] Not forwarding message 2
+[ 12.7929  Bridge aa09] 
+[ 12.7929  Bridge 9e3a] 
+[ 12.7930  Bridge aa09] Received message 3 on port 0 from c01f to 59e8
+[ 12.7930  Bridge 9e3a] Received message 3 on port 1 from c01f to 59e8
+[ 12.9101    Host 59e8] Sent message 58 to 0aa8
+[ 12.9106    Host 0aa8] Received message 58 from 59e8
+[ 12.9107  Bridge aa09] 
+[ 12.9122  Bridge 9e3a] 
+[ 12.9124  Bridge aa09] Not forwarding message 3
+[ 12.9124  Bridge 9e3a] Not forwarding message 3
+[ 12.9125  Bridge aa09] 
+[ 12.9125  Bridge 9e3a] 
+[ 12.9126  Bridge aa09] Received message 58 on port 0 from 59e8 to 0aa8
+[ 12.9126  Bridge 9e3a] Received message 58 on port 1 from 59e8 to 0aa8
+[ 12.9677    Host 90c3] Sent message 24 to f36a
+[ 12.9680    Host f36a] Received message 24 from 90c3
+[ 12.9681  Bridge 9e3a] 
+[ 12.9682  Bridge 9e3a] Not forwarding message 58
+[ 12.9682  Bridge 9e3a] 
+[ 12.9683  Bridge 9e3a] Received message 24 on port 0 from 90c3 to f36a
+[ 13.2146    Host ce76] Sent message 64 to f36a
+[ 13.2149    Host f36a] Received message 64 from ce76
+[ 13.2151  Bridge 9e3a] 
+[ 13.2151  Bridge 9e3a] Not forwarding message 24
+[ 13.2152  Bridge 9e3a] 
+[ 13.2153  Bridge 9e3a] Received message 64 on port 0 from ce76 to f36a
+[ 13.2665    Host 95aa] Sent message 46 to 59e8
+[ 13.2668  Bridge 9e3a] 
+[ 13.2669  Bridge 9e3a] Not forwarding message 64
+[ 13.2669  Bridge 9e3a] 
+[ 13.2670  Bridge 9e3a] Received message 46 on port 0 from 95aa to 59e8
+[ 13.3434    Host c01f] Sent message 22 to 3005
+[ 13.3437  Bridge aa09] 
+[ 13.3437  Bridge 9e3a] 
+[ 13.3438  Bridge aa09] Not forwarding message 58
+[ 13.3438  Bridge 9e3a] Not forwarding message 46
+[ 13.3438  Bridge aa09] 
+[ 13.3438  Bridge 9e3a] 
+[ 13.3439  Bridge aa09] Received message 22 on port 0 from c01f to 3005
+[ 13.3439  Bridge 9e3a] Received message 22 on port 1 from c01f to 3005
+[ 13.5498    Host 21ee] Sent message 4 to d5b5
+[ 13.5502  Bridge 9e3a] 
+[ 13.5503  Bridge 9e3a] Not forwarding message 22
+[ 13.5503  Bridge 9e3a] 
+[ 13.5504  Bridge 9e3a] Received message 4 on port 0 from 21ee to d5b5
+[ 13.7675    Host 0aa8] Sent message 38 to 0aa8
+[ 13.7677    Host 0aa8] Received message 38 from 0aa8
+[ 13.7678  Bridge aa09] 
+[ 13.7678  Bridge 9e3a] 
+[ 13.7679  Bridge aa09] Not forwarding message 22
+[ 13.7679  Bridge 9e3a] Not forwarding message 4
+[ 13.7679  Bridge aa09] 
+[ 13.7679  Bridge 9e3a] 
+[ 13.7680  Bridge aa09] Received message 38 on port 0 from 0aa8 to 0aa8
+[ 13.7680  Bridge 9e3a] Received message 38 on port 1 from 0aa8 to 0aa8
+[ 13.8435    Host 90c3] Sent message 26 to d5b5
+[ 13.8438  Bridge 9e3a] 
+[ 13.8438  Bridge 9e3a] Not forwarding message 38
+[ 13.8439  Bridge 9e3a] 
+[ 13.8439  Bridge 9e3a] Received message 26 on port 0 from 90c3 to d5b5
+[ 13.9807    Host c01f] Sent message 29 to f36a
+[ 13.9810  Bridge aa09] 
+[ 13.9810  Bridge 9e3a] 
+[ 13.9811  Bridge aa09] Not forwarding message 38
+[ 13.9811  Bridge 9e3a] Not forwarding message 26
+[ 13.9812  Bridge aa09] 
+[ 13.9812  Bridge 9e3a] 
+[ 13.9812  Bridge aa09] Received message 29 on port 0 from c01f to f36a
+[ 13.9812  Bridge 9e3a] Received message 29 on port 1 from c01f to f36a
+Simulation finished.
+Total packets sent: 448
+Total data packets sent: 70
+Total data packets received: 46
+Total data packets dropped: 24  (message ids 0, 1, 4, 9, 10, 14, 18, 22, 26, 27, 28, 29, 30, 32, 36, 41, 44, 46, 48, 55, 60, 61, 63, 65)
+Total data packets duplicated: 0  (message ids )
+Data packet delivery ratio: 0.657143
