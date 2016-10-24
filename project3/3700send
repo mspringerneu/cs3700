@@ -11,10 +11,10 @@ import datetime
 import select
 import json
 
-#todo: handle multiple sends/receives/ timeouts
+# todo: handle multiple sends/receives/ timeouts
 
 # adding deque from 'ack'ed messages
-from collections import deque 
+from collections import deque
 
 MSG_SIZE = 1500
 DATA_SIZE = 1000
@@ -29,7 +29,7 @@ TIMESTAMPS = deque()
 
 # the round trip time (will dynamically adjust)
 RTT = 0
-RTO = .1
+RTO = .7
 INITIAL_RTT = True
 RTT_ALPHA = 0.875
 IGNORE_NEXT_RTT = False
@@ -49,234 +49,211 @@ DUPLICATE_ACKS = 0
 # 1 in ca
 STATE = 0
 
-# the three variables that are needed for congestion control 
-# cwnd: congestion window 
-# adv_wnd: receiver advertised window 
-# ssthresh: threshold size (used to update cwnd)
-
-# for sending, use: cwnd = min(cwnd, adv_wnd)
-
-# two phases of congestion control 
-
-	#1. slow start (cwnd < ssthresh)
-	#2. congestion acoidance (cwnd >= ssthresh)
-
-############### slow start ###########################
-# slow start: cwnd = 1  ssthresh = adv_wnd  each time a segment is ACKed, cwnd++
-
-# continues until...
-
-	# ssthresh is reached (cwnd >= ssthresh)
-	
-	# or a packet is lost 
-
-# congestion avoidance (cwnd >= ssthresh)
-   # AIMD
-
-
-
-
-
-
-
-
 # Bind to localhost and an ephemeral port
 IP_PORT = sys.argv[1]
 UDP_IP = IP_PORT[0:IP_PORT.find(":")]
-UDP_PORT = int(IP_PORT[IP_PORT.find(":")+1:])
+UDP_PORT = int(IP_PORT[IP_PORT.find(":") + 1:])
 dest = (UDP_IP, UDP_PORT)
 
 # Set up the socket
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.settimeout(TIMEOUT)
 
 
-
-
-# increaing the sequence number 
+# increaing the sequence number
 # 2^32 - 1 = 4294967295 = space allocated for sequence number 
 def sequence_wrapper(id, length):
-  global SEQUENCE
-  SEQUENCE = (id + length) % 4294967295)
+    global SEQUENCE
+    SEQUENCE = (id + length) % 4294967295
+
 
 def log(string):
-  sys.stderr.write(datetime.datetime.now().strftime("%H:%M:%S.%f") + " " + string + "\n")
+    sys.stderr.write(datetime.datetime.now().strftime("%H:%M:%S.%f") + " " + string + "\n")
+
 
 # send as many packets as we are allowed to based on our congestion window
 def send_packets():
-  global SENT_MESSAGES
-  global CONGESTION_WINDOW
-  while len(SENT_MESSAGES) < CONGESTION_WINDOW:
-    status = send_next_packet()
-    if status == 0:
-      continue
-    elif status == 1:
-      sys.exit(0)
-    elif status == 2:
-      # end-of-file transmission
-      sock.sendto(json.dumps({"sequence": SEQUENCE, "data": "", "eof": True}), dest)
-      sys.exit(0) 
+    global SENT_MESSAGES
+    global CONGESTION_WINDOW
+    while len(SENT_MESSAGES) < CONGESTION_WINDOW:
+        # 0 - Length of data read from STDIN == DATA_SIZE
+        # 1 - Length of data read from STDIN < DATA_SIZE (end-of-file)
+        # 2 - Length of data read from STDIN == 0 (end-of-file)
+        status = send_next_packet()
+        if status == 0:
+            continue
+        elif status == 1:
+            sys.exit(0)
+        elif status == 2:
+            # end-of-file transmission
+            sock.sendto(json.dumps({"sequence": SEQUENCE, "data": "", "eof": True}), dest)
+            sys.exit(0)
+
 
 def send_next_packet():
-  global SEQUENCE
-  global SENT_MESSAGES_SN 
-  global SENT_MESSAGES
-  global TIMESTAMPS 
-  
-  # is this the end of the file  
-  eof = False
-  # 0 - Length of data read from STDIN == DATA_SIZE
-  # 1 - Length of data read from STDIN < DATA_SIZE (end-of-file)
-  # 2 - Length of data read from STDIN == 0 (end-of-file)
-  status = 0
-  # reads the amount of data that we have specified in DATA_SIZE
-  data = sys.stdin.read(DATA_SIZE)
-  if (len(data) > 0):
-    # if we have read all of the data in STDIN
-    if (len(data) < DATA_SIZE):
-      eof = True
-      status = 1
-    # the msg that we are about to send to the receiver 
-    msg = json.dumps({"sequence": SEQUENCE, "data": data, "eof": eof})
-    # add the msg to the list of messages sent 
-    #
-    sequence_wrapper(SEQUENCE, len(data))
-    SEQUENCE += len(data)
+    global SEQUENCE
+    global SENT_MESSAGES_SN
+    global SENT_MESSAGES
+    global TIMESTAMPS
+    global dest
 
-    if sock.sendto(msg, dest) < len(msg):
-      log("[error] unable to fully send packet")
+    # is this the end of the file
+    eof = False
+    # 0 - Length of data read from STDIN == DATA_SIZE
+    # 1 - Length of data read from STDIN < DATA_SIZE (end-of-file)
+    # 2 - Length of data read from STDIN == 0 (end-of-file)
+    status = 0
+    # reads the amount of data that we have specified in DATA_SIZE
+    data = sys.stdin.read(DATA_SIZE)
+    if len(data) > 0:
+        # if we have read all of the data in STDIN
+        if len(data) < DATA_SIZE:
+            eof = True
+            status = 1
+        # the msg that we are about to send to the receiver
+        msg = json.dumps({"sequence": SEQUENCE, "data": data, "eof": eof})
+        # add the msg to the list of messages sent
+
+        # update the sequence number
+        sequence_wrapper(SEQUENCE, len(data))
+
+        if sock.sendto(msg, dest) < len(msg):
+            log("[error] unable to fully send packet")
+        else:
+            SENT_MESSAGES_SN.append(SEQUENCE)
+            SENT_MESSAGES.append(msg)
+            TIMESTAMPS.append(time.time())
+            log("[send data] " + str(SEQUENCE) + " (" + str(len(data)) + ")")
     else:
-      SENT_MESSAGES_SN.append(SEQUENCE)
-      SENT_MESSAGES.append(msg)
-      TIMESTAMPS.append(time.time())
-      log("[send data] " + str(SEQUENCE) + " (" + str(len(data)) + ")")
-  else:
-    status = 2
-  # returns True if there are more packets to send, False if its the end of the file
-  return status
+        status = 2
+    # returns True if there are more packets to send, False if its the end of the file
+    return status
+
 
 def retransmit_packets():
-  global SENT_MESSAGES
-  retransmit = SENT_MESSAGES
-  log("[retransmission] 3 duplicate ACKs received, initiating fast retransmit protocol")
-  while len(retransmit):
-    if sock.sendto(retransmit[0], dest) < len(retransmit[0]):
-      log("[error] unable to fully send packet")
-    else:
-      log("[send data] " + str(retransmit[0]["sequence"]) + " (" + str(len(retransmit[0]["data"])) + ")")
-      retransmit.popleft()
-
-# Send first packet
-send_next_packet()
+    global SENT_MESSAGES
+    global dest
+    retransmit = SENT_MESSAGES
+    log("[retransmission] 3 duplicate ACKs received, initiating fast retransmit protocol")
+    while len(retransmit) > 0:
+        message = json.loads(retransmit[0])
+        if sock.sendto(retransmit[0], dest) < len(retransmit[0]):
+            log("[error] unable to fully send packet")
+        else:
+            log("[send data] " + str(message["sequence"]) + " (" + str(len(message["data"])) + ")")
+            retransmit.popleft()
 
 
 # logic for receiving acks
 def rec_ack(decoded):
-  global STATE
-  global SEQUENCE
-  global SENT_MESSAGES
-  global SENT_MESSAGES_SN
-  global CA_ACKS
-  global ACKED_BYTES
-  global DUPLICATE_ACKS
-  if STATE == 0:	
-    if decoded['ack'] == SENT_MESSAGES_SN[0]:
-      updateRTT()
-      # increase the congestion window and pop the sent message of the sent_messages
-      CONGESTION_WINDOW++
-      log("[recv ack]" + str(SENT_MESSAGES_SN[0]))
-      SENT_MESSAGES.popleft()
-      ACKED_BYTES = SENTMESSAGES_SN[0]
-      DUPLICATE_ACKS = 0
-      SENT_MESSAGES_SN.popleft()
-      # check if we are out of start up 
-      if CONGESTION_WINDOW >= SSTHRESH:
-        STATE = 1
+    global STATE
+    global SEQUENCE
+    global SENT_MESSAGES
+    global SENT_MESSAGES_SN
+    global CA_ACKS
+    global ACKED_BYTES
+    global DUPLICATE_ACKS
+    global CONGESTION_WINDOW
+    if STATE == 0:
+        if decoded['ack'] == SENT_MESSAGES_SN[0]:
+            updateRTT()
+            # increase the congestion window and pop the sent message of the sent_messages
+            CONGESTION_WINDOW += 1
+            log("[recv ack]" + str(SENT_MESSAGES_SN[0]))
+            SENT_MESSAGES.popleft()
+            ACKED_BYTES = SENT_MESSAGES_SN[0]
+            DUPLICATE_ACKS = 0
+            SENT_MESSAGES_SN.popleft()
+            # check if we are out of start up
+            if CONGESTION_WINDOW >= SSTHRESH:
+                STATE = 1
 
-      # try to send next packet; break if no more data
-      if (not send_next_packet()):
-        break
-  # we are now in the congestion avoidance control logic 
-  else:
-    if decoded['ack'] == SENT_MESSAGES_SN[0]:
-      updateRTT()
-      CA_ACKS++
-      if CA_ACKS == CONGESTION_WINDOW:
-        CONGESTION_WINDOW++
-        CA_ACKS = 0
-      log("[recv ack]" + str(SENT_MESSAGES_SN[0]))
-      SENT_MESSAGES.popleft()
-      ACKED_BYTES = SENT_MESSAGES_SN[0]
-      DUPLICATE_ACKS = 0
-      SENT_MESSAGES_SN.popleft()
-      if (not send_next_packet()):
-        break
-    elif decoded['ack'] == ACKED_BYTES:
-      DUPLICATE_ACKS++
-      if DUPLICATE_ACKS == 3:
-        fastRetransmit()
+                # try to send next packet; break if no more data
+                # send_packets()
+    # we are now in the congestion avoidance control logic
+    else:
+        if decoded['ack'] == SENT_MESSAGES_SN[0]:
+            updateRTT()
+            CA_ACKS += 1
+            if CA_ACKS == CONGESTION_WINDOW:
+                CONGESTION_WINDOW += 1
+                CA_ACKS = 0
+            log("[recv ack]" + str(SENT_MESSAGES_SN[0]))
+            SENT_MESSAGES.popleft()
+            ACKED_BYTES = SENT_MESSAGES_SN[0]
+            DUPLICATE_ACKS = 0
+            SENT_MESSAGES_SN.popleft()
+            # try to send next packet; break if no more data
+            # send_packets()
+        elif decoded['ack'] == ACKED_BYTES:
+            DUPLICATE_ACKS += 1
+            if DUPLICATE_ACKS == 3:
+                fastRetransmit()
+
 
 # dynamically adjust RTT as a moving average
 def updateRTT():
-  global RTT
-  global RTO
-  global INITIAL_RTT
-  global RTT_ALPHA
-  global TIMESTAMPS
-  if INITIAL_RTT:
-    RTT = time.time() - TIMESTAMPS[0]
-    TIMESTAMPS.popleft()
-    updateRTO()
-    INITIAL_RTT = False
-  else:
-    RTT = (RTT_ALPHA * RTT) + (1 - RTT_ALPHA)(time.time() - TIMESTAMPS[0])
-    TIMESTAMPS.popleft()
-    updateRTO()
+    global RTT
+    global RTO
+    global INITIAL_RTT
+    global RTT_ALPHA
+    global TIMESTAMPS
+    if INITIAL_RTT:
+        RTT = time.time() - TIMESTAMPS[0]
+        TIMESTAMPS.popleft()
+        updateRTO()
+        INITIAL_RTT = False
+    else:
+        RTT = (RTT_ALPHA * RTT) + (1 - RTT_ALPHA) * (time.time() - TIMESTAMPS[0])
+        TIMESTAMPS.popleft()
+        updateRTO()
+
 
 # sets RTO (timeout) to 2 * RTT
-def updateRTO()
-  global RTO
-  global RTT
-  RTO = 2 * RTT
+def updateRTO():
+    global RTO
+    global RTT
+    RTO = 2 * RTT
+
 
 # logic for fast retransmission
 def fastRestransmit():
-  global CONGESTION_WINDOW
-  global CA_ACKS
-  global SSTHRESH
-  global DUPLICATE_ACKS
-  CONGESTION_WINDOW = SSTHRESH / 2
-  CA_ACKS = 0
-  DUPLICATE_ACKS = 0
-  retransmit_packets()
+    global CONGESTION_WINDOW
+    global CA_ACKS
+    global SSTHRESH
+    global DUPLICATE_ACKS
+    CONGESTION_WINDOW = SSTHRESH / 2
+    CA_ACKS = 0
+    DUPLICATE_ACKS = 0
+    retransmit_packets()
+
 
 def retransmissionTimeout():
-  global CONGESTION_WINDOW
-  global STATE
-  global SSTHRESH
-  log("[error] timeout")
-  SSTHRESH = CONGESTION_WINDOW / 2
-  CONGESTION_WINDOW = 1
-  # back to slow start
-  STATE = 0
-  retransmit_packets()
+    global CONGESTION_WINDOW
+    global STATE
+    global SSTHRESH
+    log("[error] timeout")
+    SSTHRESH = CONGESTION_WINDOW / 2
+    CONGESTION_WINDOW = 1
+    # back to slow start
+    STATE = 0
+    retransmit_packets()
+
 
 # main functionality of sender program (point of control for rest of program)
 while True:
-  send_packets()
-  
-  # calls select with all the sockets; timeout value is the RT0
-  ready, ignore, ingore2 = select.select([sock], [], [], RT0)
-  if len(ready):
-    result = sock.recvfrom(MSG_SIZE)
-    if result:
-      (data, addr) = result
-      try:
-        decoded = json.loads(data)
-        rec_ack(decoded)
-      except (ValueError, KeyError, TypeError):
-	log("[recv corrupt packet]")
-  else:
-    retransmissionTimeout()
+    send_packets()
 
-
+    # calls select with all the sockets; timeout value is the RTO
+    ready, ignore, ignore2 = select.select([sock], [], [], RTO)
+    if len(ready):
+        result = sock.recvfrom(MSG_SIZE)
+        if result:
+            (data, addr) = result
+            try:
+                decoded = json.loads(data)
+                rec_ack(decoded)
+            except (ValueError, KeyError, TypeError):
+                log("[recv corrupt packet]")
+    else:
+        retransmissionTimeout()
