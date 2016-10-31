@@ -36,7 +36,7 @@ END_OF_FILE = False
 
 # the round trip time (will dynamically adjust)
 RTT = 0
-RTO = .2
+RTO = .5
 INITIAL_RTT = True
 RTT_ALPHA = 0.875
 IGNORE_NEXT_RTT = False
@@ -108,12 +108,13 @@ def send_next_packet():
     global TIMESTAMPS
     global dest
 
-    msg = json.dumps(MESSAGES[INDEX])
-    if sock.sendto(msg, dest) < len(msg):
+    msg = MESSAGES[INDEX]
+    packedMsg = json.dumps(msg)
+    if sock.sendto(packedMsg, dest) < len(packedMsg):
         log("[error] unable to fully send packet")
     else:
         TIMESTAMPS.append(time.time())
-        log("[send data] " + str(SEQUENCE) + " (" + str(len(data)) + ")")
+        log("[send data] " + str(msg["sequence"]) + " (" + str(len(msg["data"])) + ")")
         INDEX += 1
         PACKETS_IN_TRANSIT += 1
 
@@ -131,50 +132,79 @@ def rec_ack(decoded):
     global CONGESTION_WINDOW
     global END_OF_FILE
     global PACKETS_IN_TRANSIT
+    global TIMESTAMPS
     if STATE == 0:
         if decoded['ack'] == MESSAGES_SN[0]:
-            updateRTT()
-            # increase the congestion window and pop the sent message of the sent_messages
-            CONGESTION_WINDOW += 1
-            log("[recv ack]" + str(MESSAGES_SN[0]))
-            ACKED_BYTES = MESSAGES_SN[0]
-            DUPLICATE_ACKS = 0
-            MESSAGES.popleft()
-            MESSAGES_SN.popleft()
-            PACKETS_IN_TRANSIT -= 1
-            INDEX -= 1
-            if len(MESSAGES) == 0:
-                END_OF_FILE = True
-            # check if we are out of start up
-            if CONGESTION_WINDOW >= SSTHRESH:
-                STATE = 1
-
-                # try to send next packet; break if no more data
-                # send_packets()
-    # we are now in the congestion avoidance control logic
-    else:
-        if decoded['ack'] == MESSAGES_SN[0]:
-            updateRTT()
-            CA_ACKS += 1
-            if CA_ACKS == CONGESTION_WINDOW:
+            if decoded['eof']:
+                log("[transmission successful]")
+                sys.exit(0)
+            else:
+                if len(TIMESTAMPS) > 0:
+                    updateRTT()
+                # increase the congestion window and pop the sent message of the sent_messages
                 CONGESTION_WINDOW += 1
-                CA_ACKS = 0
-            log("[recv ack]" + str(MESSAGES_SN[0]))
-            ACKED_BYTES = MESSAGES_SN[0]
-            DUPLICATE_ACKS = 0
-            MESSAGES.popleft()
-            SENT_MESSAGES_SN.popleft()
-            PACKETS_IN_TRANSIT -= 1
-            INDEX -= 1
-            if len(MESSAGES) == 0:
-                END_OF_FILE = True
-            # try to send next packet; break if no more data
-            # send_packets()
-        elif decoded['ack'] == ACKED_BYTES:
+                log("[recv ack] " + str(MESSAGES_SN[0]))
+                ACKED_BYTES = MESSAGES_SN[0]
+                DUPLICATE_ACKS = 0
+                MESSAGES.popleft()
+                MESSAGES_SN.popleft()
+                PACKETS_IN_TRANSIT -= 1
+                INDEX -= 1
+                if len(MESSAGES) == 0:
+                    END_OF_FILE = True
+                # check if we are out of start up
+                if CONGESTION_WINDOW >= SSTHRESH:
+                    log("[threshold reached] entering congestion avoidance")
+                    STATE = 1
+        elif decoded['ack'] <= ACKED_BYTES:
+            log("[recv ack] " + str(ACKED_BYTES) + " (DUPLICATE)")
             DUPLICATE_ACKS += 1
             PACKETS_IN_TRANSIT -= 1
             if DUPLICATE_ACKS == 3:
                 fastRetransmit()
+        else:
+            MESSAGES.popleft()
+            MESSAGES_SN.popleft()
+            TIMESTAMPS.popleft()
+            INDEX -= 1
+            rec_ack(decoded)
+    # we are now in the congestion avoidance control logic
+    else:
+        if decoded['ack'] == MESSAGES_SN[0]:
+            if decoded['eof']:
+                log("[transmission successful]")
+                sys.exit(0)
+            else:
+                if len(TIMESTAMPS) > 0:
+                    updateRTT()
+                CA_ACKS += 1
+                if CA_ACKS == CONGESTION_WINDOW:
+                    CONGESTION_WINDOW += 1
+                    CA_ACKS = 0
+                log("[recv ack] " + str(MESSAGES_SN[0]))
+                ACKED_BYTES = MESSAGES_SN[0]
+                DUPLICATE_ACKS = 0
+                MESSAGES.popleft()
+                MESSAGES_SN.popleft()
+                PACKETS_IN_TRANSIT -= 1
+                INDEX -= 1
+                if len(MESSAGES) == 0:
+                    END_OF_FILE = True
+                # try to send next packet; break if no more data
+                # send_packets()
+        elif decoded['ack'] <= ACKED_BYTES:
+            log("[recv ack] " + str(ACKED_BYTES) + " (DUPLICATE)")
+            DUPLICATE_ACKS += 1
+            PACKETS_IN_TRANSIT -= 1
+            if DUPLICATE_ACKS == 3:
+                fastRetransmit()
+        else:
+            MESSAGES.popleft()
+            MESSAGES_SN.popleft()
+            TIMESTAMPS.popleft()
+            INDEX -= 1
+            rec_ack(decoded)
+
 
 
 # dynamically adjust RTT as a moving average
@@ -199,11 +229,12 @@ def updateRTT():
 def updateRTO():
     global RTO
     global RTT
-    RTO = 2 * RTT
+    RTO = max(2 * RTT, .2)
+    log("[new RTO] " + str(RTO))
 
 
 # logic for fast retransmission
-def fastRestransmit():
+def fastRetransmit():
     global INDEX
     global CONGESTION_WINDOW
     global CA_ACKS

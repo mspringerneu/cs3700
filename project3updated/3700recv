@@ -1,0 +1,141 @@
+#!/usr/bin/python -u
+#
+# receiver code 
+#
+#
+
+import sys
+import socket
+import time
+import datetime
+import select
+import json
+
+
+def log(string):
+    sys.stderr.write(datetime.datetime.now().strftime("%H:%M:%S.%f") + " " + string + "\n")
+
+
+MSG_SIZE = 1500
+TIMEOUT = 30
+
+MESSAGE = ""
+ACKED_BYTES = len(MESSAGE)
+
+DUP_EOF_ACKS = 5
+
+# Bind to localhost and an ephemeral port
+UDP_IP = "127.0.0.1"
+UDP_PORT = 0
+
+# Set up the socket
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock.bind((UDP_IP, UDP_PORT))
+sock.settimeout(TIMEOUT)
+
+# Get port we bound to
+UDP_PORT = sock.getsockname()[1]
+log("[bound] " + str(UDP_PORT))
+
+
+# increasing the sequence number
+# 2^32 - 1 = 4294967295 = space allocated for sequence number
+def sequence_wrapper(id, length):
+    global ACKED_BYTES
+    ACKED_BYTES = (id + length) % 4294967295
+
+
+def checkSequenceNum(data):
+    global ACKED_BYTES
+    # if in-order
+    if data['sequence'] == ACKED_BYTES:
+        return 0
+    # if out-of-order
+    elif data['sequence'] > ACKED_BYTES:
+        return 1
+    # if duplicate
+    else:
+        return 2
+
+
+# handler for received data messages
+def receiveInOrderData(data, eof):
+    global ACKED_BYTES
+    global MESSAGE
+    # if the data message is received in order
+    log("[recv data] " + str(data['sequence']) + " (" + str(len(data['data'])) + ") ACCEPTED (in-order)")
+    MESSAGE += data['data']
+    # updates the ACKED_BYTES value
+    sequence_wrapper(data['sequence'], len(data['data']))
+    # return the ack message for use in acknowledge()
+    return json.dumps({"ack": data['sequence'] + len(data['data']), "eof": eof})
+
+
+def receiveEndOfFileInOrder(data, addr):
+    global MESSAGE
+    global DUP_EOF_ACKS
+    sentAcks = 0
+    while sentAcks < DUP_EOF_ACKS:
+        ack = receiveInOrderData(data, True)
+        if acknowledge(ack, addr):
+            sentAcks += 1
+    sys.stdout.write(MESSAGE)
+    log("[completed]")
+    sys.exit(0)
+
+
+def receiveOutOfOrderPacket(data, status):
+    global ACKED_BYTES
+    if data['data']:
+        if status == 1:
+            log("[recv data] " + str(data['sequence']) + " (" + str(len(data['data'])) + ") ACCEPTED (out-of-order)")
+        elif status == 2:
+            log("[recv data] " + str(data['sequence']) + " (" + str(len(data['data'])) + ") IGNORED")
+            # return the ack message for use in acknowledge()
+    return json.dumps({"ack": ACKED_BYTES, "eof": False})
+
+
+# send an acknowledgement to the sender
+def acknowledge(ack, addr):
+    sentAck = True
+    log("ABOUT TO SEND " + ack)
+    if sock.sendto(ack, addr) < len(ack):
+        log("[error] unable to fully send acknowledgement")
+        sentAck = False
+    return sentAck
+
+
+def acknowledgeCorrupt(addr):
+    global ACKED_BYTES
+    log("[recv corrupt packet]")
+    ack = json.dumps({"ack": ACKED_BYTES})
+    acknowledge(ack, addr)
+
+
+# Now listen for packets
+while True:
+    result = sock.recvfrom(MSG_SIZE)
+
+    # If nothing is ready, we hit the timeout
+    if result:
+        (data, addr) = result
+
+        try:
+            decoded = json.loads(data)
+            status = checkSequenceNum(decoded)
+
+            # if this is the next sequential packet:
+            if status == 0:
+                if decoded['eof']:
+                    receiveEndOfFileInOrder(decoded, addr)
+                elif decoded['data']:
+                    acknowledge(receiveInOrderData(decoded, False), addr)
+            else:
+                acknowledge(receiveOutOfOrderPacket(decoded, status), addr)
+
+        except (ValueError, KeyError, TypeError) as e:
+            acknowledgeCorrupt(addr)
+            # raise e
+    else:
+        log("[error] timeout")
+        sys.exit(-1)

@@ -1,0 +1,28 @@
+Basic (friendly network) tests
+  Small 1 Mb/s, 10 ms latency                               [PASS]
+  Small 0.1 Mb/s 10 ms latency                              [PASS]
+  Small 0.1 Mb/s 50 ms latency                              [PASS]
+  Medium 1 Mb/s, 10 ms latency                              [PASS]
+  Medium 0.1 Mb/s 10 ms latency                             [PASS]
+  Medium 0.1 Mb/s 50 ms latency                             [PASS]
+  Large 1 Mb/s, 10 ms latency                               [PASS]
+  Large 0.5 Mb/s 10 ms latency                              [PASS]
+  Large 0.1 Mb/s 500 ms latency                             [PASS]
+
+Advanced tests
+  Small 1Mb/s, 10 ms, 100% duplicate                        [PASS]
+  Medium 1Mb/s, 10 ms, 50% reorder 10% drop                 [PASS]
+  Medium 1Mb/s, 10 ms, 50% drop                             [PASS]
+  Medium 1Mb/s, 10 ms, 50% delay 25% duplicate              [PASS]
+  Medium 5Mb/s, 10 ms, 5% delay 5% duplicate 5% drop        [PASS]
+  Large 1Mb/s, 10 ms, 10% delay 10% duplicate               [FAIL]
+  Large 10Mb/s, 10ms, 1% drop 1% duplicate 1% drop          [PASS]
+
+Performance tests
+  Huge 5Mb/s, 10 ms                                         [PASS]
+    2.175 sec elapsed, 1MB sent
+  Large 5Mb/s, 10 ms, 10% drop                              [PASS]
+    8.065 sec elapsed, 141KB sent
+  Large 10Mb/s, 50 ms, 10% drop                             [PASS]
+    4.686 sec elapsed, 172KB sent
+  Large 10Mb/s, 25 ms, 10% drop 10% duplicate 20% delay     [FAIL]
