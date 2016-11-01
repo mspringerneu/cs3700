@@ -75,8 +75,8 @@ def receiveEndOfFileInOrder(data, addr):
     global MESSAGE
     global DUP_EOF_ACKS
     sentAcks = 0
+    ack = receiveInOrderData(data, True)
     while sentAcks < DUP_EOF_ACKS:
-        ack = receiveInOrderData(data, True)
         if acknowledge(ack, addr):
             sentAcks += 1
     sys.stdout.write(MESSAGE)

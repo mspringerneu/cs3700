@@ -17,7 +17,7 @@ import json
 from collections import deque
 
 MSG_SIZE = 1500
-DATA_SIZE = 1000
+DATA_SIZE = 1300
 TIMEOUT = 30
 SEQUENCE = 0
 
@@ -52,7 +52,7 @@ ACKED_BYTES = 0
 DUPLICATE_ACKS = 0
 
 # state variable
-# 0 in slow start 
+# 0 in slow start
 # 1 in ca
 STATE = 0
 
@@ -72,7 +72,7 @@ READING = True
 
 
 # increasing the sequence number
-# 2^32 - 1 = 4294967295 = space allocated for sequence number 
+# 2^32 - 1 = 4294967295 = space allocated for sequence number
 def sequence_wrapper(length):
     global SEQUENCE
     SEQUENCE = (SEQUENCE + length) % 4294967295
