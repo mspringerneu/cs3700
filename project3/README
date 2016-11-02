@@ -1,0 +1,13 @@
+** High Level Approach **
+
+For this project, we again decided to use Python, due to our positive experiences with the language during the first two assignments.  For our transport protocol, we decided to use TCP Reno as our inspiration, with fast retransmit after 3 duplicate ACKs.  We did not feel the need to create classes in our '3700send' and '3700recv' files to limit overhead, instead creating the necessary methods to handle sent and received message, updating globally stored variables as necessary.
+
+** Challenges **
+
+Our primary challenge was implementing the 'struct.pack()' and 'struct.unpack()' message encoding to use in place of 'json.dumps()' and 'json.loads()', due to the professor's recommendation on Piazza.  For easier testing, we first completed the assignment using json, before attempting to implement struct to use in its place.  It ended up being a nightmare and, due to time constraints, we overcame the challenge by avoiding it entirely and reverting to our json version.
+
+A smaller challenge had to do with dynamically updating RTT using the provided algorithm in the slides.  The RTT that it calculated was often too small, so that when we did encounter a timeout, it would often compound and create a timeout loop.  We remedied this by giving our RTT a minimum baseline.  It could grow above this threshold if necessary, but would never fall below it.  Implementing this immediately resulted in us passing tests that we had previously failed.
+
+** Testing **
+
+When we felt our code was ready to test, we would run the './test' executable included with the starter code.  Based off of the results, we would pick one of the FAILED results to focus on, recreating that particular test's environment using '/course/cs3700f16/bin/project3/netsim' and the appropriate environment tags.  We would then run our code using the './run' executable with the '--printlog' tag.  Using the printouts, we would try and locate the source of the issue and adjust our code accordingly.  If the problem persisted, we often used the 'log()' method provided to add additional printouts (in lieu of breakpoints) to narrow our diagnosis.  This method was largely successful, and by repeating it we were able to pass all of the tests.  At this point, we had our code working, and played around with a few of our variables, such as the timeout to try to improve our performance.

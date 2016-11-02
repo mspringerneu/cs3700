@@ -1,112 +1,101 @@
 #!/usr/bin/python -u
 #
-# sender code 
+# SENDER
 #
 #
-
 import sys
 import socket
 import time
 import datetime
 import select
 import json
-
-# todo: handle multiple sends/receives/ timeouts
-
-# adding deque from 'ack'ed messages
 from collections import deque
+#################################################################################
+# Global Variables used by the sender
 
+# the size of the message being sent to the receiver
 MSG_SIZE = 1500
+# the size of the data being sent to the receiver
 DATA_SIZE = 1300
+# how long it takes the sender to timeout (in seconds)
 TIMEOUT = 30
+# the sequence number (it is 0 initially)
 SEQUENCE = 0
-
 # holds all the messages that we have sent to the receiver
 MESSAGES = deque()
+# hold all expected acknowledgement numbers for the associated messages
 MESSAGES_SN = deque()
-NUM_MESSAGES = 0
+# the timestamps for each of the messages sent out (i.e. when they were sent)
 TIMESTAMPS = deque()
-
 # index of the next message to send
 INDEX = 0
-
+# the number of packets (not acknowledged yet) sent out
 PACKETS_IN_TRANSIT = 0
-
+# It is True is there are no messages to be sent/ false if there is
 END_OF_FILE = False
-
 # the round trip time (will dynamically adjust)
 RTT = 0
+# retransmission timeouts
 RTO = .5
+# Determines if this is the first message to send
 INITIAL_RTT = True
+# constant used for round trip time estimation
 RTT_ALPHA = 0.875
-IGNORE_NEXT_RTT = False
-
+# the threshold value (used for congestion control)
 SSTHRESH = 10
+# the size of the congestion window
 CONGESTION_WINDOW = 1
-# threshold size (used to upate congestion window)
-
-
-# variable to track when to increase cwnd in CA
+# variable to track when to increase congestion window in congestion avoidance
 CA_ACKS = 0
+# how much data has been acknowledged (used in case of duplication)
 ACKED_BYTES = 0
+# the number of duplicated acknowledgements
 DUPLICATE_ACKS = 0
-
-# state variable
-# 0 in slow start
-# 1 in ca
+# 0 means we are in slow start & 1 means we are in congestion avoidance
 STATE = 0
-
-# Bind to localhost and an ephemeral port
+# determines if we are still adding messages to the deque
+READING = True
+# Port setup
 IP_PORT = sys.argv[1]
 UDP_IP = IP_PORT[0:IP_PORT.find(":")]
 UDP_PORT = int(IP_PORT[IP_PORT.find(":") + 1:])
 dest = (UDP_IP, UDP_PORT)
-
-# Set up the socket
+# socket setup
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.settimeout(TIMEOUT)
 
-READING = True
+# end of global variables used by the sender
+#################################################################################
 
 
-
-
-# increasing the sequence number
+# Used for keeping track of the sequence number
 # 2^32 - 1 = 4294967295 = space allocated for sequence number
 def sequence_wrapper(length):
-    global SEQUENCE
+    global SEQUENCE  # the sequence number (it is 0 initially)
     SEQUENCE = (SEQUENCE + length) % 4294967295
 
 
+# Used to print to console during run execution
 def log(string):
     sys.stderr.write(datetime.datetime.now().strftime("%H:%M:%S.%f") + " " + string + "\n")
 
 
 # send as many packets as we are allowed to based on our congestion window
 def send_packets():
-    global SENT_MESSAGES
-    global CONGESTION_WINDOW
-    global END_OF_FILE
-    global INDEX
+    global CONGESTION_WINDOW  # the size of the congestion window
+    global END_OF_FILE  # It is True is there are no messages to be sent/ false if there is
+    global INDEX  # index of the next message to send
     while INDEX < CONGESTION_WINDOW and len(MESSAGES) > 0 and INDEX < len(MESSAGES):
-        # 0 - Length of data read from STDIN == DATA_SIZE
-        # 1 - Length of data read from STDIN < DATA_SIZE (end-of-file)
-        # 2 - Length of data read from STDIN == 0 (end-of-file)
-
         send_next_packet()
 
 
+# logic for sending one packet
 def send_next_packet():
-    global INDEX
-    global PACKETS_IN_TRANSIT
-    global SEQUENCE
-    global MESSAGES
-    global MESSAGES_SN
-    global ACKED_BYTES
-    global SENT_MESSAGES_SN
-    global SENT_MESSAGES
-    global TIMESTAMPS
-    global dest
+    global INDEX  # index of the next message to send
+    global PACKETS_IN_TRANSIT  # the number of packets (not acknowledged yet) sent out
+    global MESSAGES  # holds all the messages that we have sent to the receiver
+    global TIMESTAMPS  # the timestamps for each of the messages sent out (i.e. when they were sent)
+    global dest  # the destination of the message to be sent
 
     msg = MESSAGES[INDEX]
     packedMsg = json.dumps(msg)
@@ -119,20 +108,18 @@ def send_next_packet():
         PACKETS_IN_TRANSIT += 1
 
 
-# logic for receiving acks
+# logic for receiving acknowledgements from the reciever
 def rec_ack(decoded):
-    global INDEX
-    global STATE
-    global SEQUENCE
-    global SENT_MESSAGES
-    global SENT_MESSAGES_SN
-    global CA_ACKS
-    global ACKED_BYTES
-    global DUPLICATE_ACKS
-    global CONGESTION_WINDOW
-    global END_OF_FILE
-    global PACKETS_IN_TRANSIT
-    global TIMESTAMPS
+    global INDEX  # index of the next message to send
+    global STATE  # 0 means we are in slow start & 1 means we are in congestion avoidance
+    global SEQUENCE  # the sequence number (it is 0 initially)
+    global CA_ACKS  # variable to track when to increase congestion window in congestion avoidance
+    global ACKED_BYTES  # how much data has been acknowledged (used in case of duplication)
+    global DUPLICATE_ACKS  # the number of duplicated acknowledgements
+    global CONGESTION_WINDOW  # the size of the congestion window
+    global END_OF_FILE  # It is True is there are no messages to be sent/ false if there is
+    global PACKETS_IN_TRANSIT  # the number of packets (not acknowledged yet) sent out
+    global TIMESTAMPS  # the timestamps for each of the messages sent out (i.e. when they were sent)
     if STATE == 0:
         if decoded['ack'] == MESSAGES_SN[0]:
             if decoded['eof']:
@@ -152,7 +139,7 @@ def rec_ack(decoded):
                 INDEX -= 1
                 if len(MESSAGES) == 0:
                     END_OF_FILE = True
-                # check if we are out of start up
+                # Checks to see if we are out of start up (i.e. do we need to change state to 1)
                 if CONGESTION_WINDOW >= SSTHRESH:
                     log("[threshold reached] entering congestion avoidance")
                     STATE = 1
@@ -168,7 +155,8 @@ def rec_ack(decoded):
             TIMESTAMPS.popleft()
             INDEX -= 1
             rec_ack(decoded)
-    # we are now in the congestion avoidance control logic
+
+    # STATE is 1: we are now in the congestion avoidance control logic
     else:
         if decoded['ack'] == MESSAGES_SN[0]:
             if decoded['eof']:
@@ -206,14 +194,13 @@ def rec_ack(decoded):
             rec_ack(decoded)
 
 
-
-# dynamically adjust RTT as a moving average
+# dynamically adjusts RTT as a moving average
 def updateRTT():
-    global RTT
-    global RTO
-    global INITIAL_RTT
-    global RTT_ALPHA
-    global TIMESTAMPS
+    global RTT  # the round trip time (will dynamically adjust)
+    global RTO  # retransmission timeouts
+    global INITIAL_RTT  # Determines if this is the first message to send
+    global RTT_ALPHA  # constant used for round trip time estimation
+    global TIMESTAMPS  # the timestamps for each of the messages sent out (i.e. when they were sent)
     if INITIAL_RTT:
         RTT = time.time() - TIMESTAMPS[0]
         TIMESTAMPS.popleft()
@@ -225,22 +212,22 @@ def updateRTT():
         updateRTO()
 
 
-# sets RTO (timeout) to 2 * RTT
+# sets RTO for the sender
 def updateRTO():
-    global RTO
-    global RTT
+    global RTO  # retransmission timeouts
+    global RTT  # the round trip time (will dynamically adjust)
     RTO = max(2 * RTT, .2)
     log("[new RTO] " + str(RTO))
 
 
-# logic for fast retransmission
+# logic for fast retransmission (triggered when we get 3 duplicate ACKs)
 def fastRetransmit():
-    global INDEX
-    global CONGESTION_WINDOW
-    global CA_ACKS
-    global SSTHRESH
-    global DUPLICATE_ACKS
-    global END_OF_FILE
+    global INDEX # index of the next message to send
+    global CONGESTION_WINDOW # the size of the congestion window
+    global CA_ACKS # variable to track when to increase congestion window in congestion avoidance
+    global SSTHRESH # the threshold value (used for congestion control)
+    global DUPLICATE_ACKS  # the number of duplicated acknowledgements
+    global END_OF_FILE  # It is True is there are no messages to be sent/ false if there is
     CONGESTION_WINDOW = SSTHRESH / 2
     CA_ACKS = 0
     DUPLICATE_ACKS = 0
@@ -251,12 +238,13 @@ def fastRetransmit():
     send_packets()
 
 
+# logic for retransmission after a timeout
 def retransmissionTimeout():
-    global INDEX
-    global CONGESTION_WINDOW
-    global STATE
-    global SSTHRESH
-    global END_OF_FILE
+    global INDEX  # index of the next message to send
+    global CONGESTION_WINDOW  # the size of the congestion window
+    global STATE  # 0 means we are in slow start & 1 means we are in congestion avoidance
+    global SSTHRESH  # the threshold value (used for congestion control)
+    global END_OF_FILE  # It is True is there are no messages to be sent/ false if there is
     log("[error] timeout")
     SSTHRESH = CONGESTION_WINDOW / 2
     CONGESTION_WINDOW = 1
@@ -286,10 +274,11 @@ while READING:
         MESSAGES.append({"sequence": SEQUENCE, "data": "", "eof": True})
         MESSAGES_SN.append(SEQUENCE)
 
+#######################################################################################
 # main functionality of sender program (point of control for rest of program)
 while not END_OF_FILE:
+    # send as many packets as allowed each time
     send_packets()
-
     # calls select with all the sockets; timeout value is the RTO
     ready, ignore, ignore2 = select.select([sock], [], [], RTO)
     if len(ready):
@@ -303,5 +292,6 @@ while not END_OF_FILE:
                 log("[recv corrupt packet]")
     else:
         retransmissionTimeout()
-
+#######################################################################################
+# close the program
 sys.exit(0)
