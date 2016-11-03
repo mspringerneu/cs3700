@@ -7,26 +7,212 @@ import datetime
 import select
 import json
 import urlparse
+from collections import deque
+from HTMLParser import HTMLParser
+
+
+###########################
+##  HIGH-LEVEL APPROACH  ##
+###########################
+
+
+    #### VARIABLES TO STORE ####
+
+
+        ## PENDING: AN ARRAY OF URLS THE CRAWLER HAS YET TO EXPLORE
+        ## DATABASES: AN ARRAY OF DATABASES MAINTAINED BY THE CRAWLER, SORTED BY LOCATION ON THE HASH CIRCLE
+
+
+    #### CRAWLING ALGORITHM ####
+
+
+        ## LOG IN
+        ## 'GET' HOME PAGE HTML
+        ## PARSE HOME PAGE HTML
+        ## SCAN FOR <a href='fring.ccs.neu.edu/fakebook/xxxxxxxxx'></a> LINKS, APPEND THEM TO 'PENDING' ARRAY
+        ## SEPARATE THE 9-DIGIT PROFILE ID FROM THE URL
+
+
+
 
 #########################
 ##  HTTP STATUS CODES  ##
 #########################
 
 
-## 200 - All clear
-## 301 - HTTP redirect: crawler should retry request using url returned in Location header
-## 403 - Forbidden: crawler should abandon the URL that generated the error code
-## 404 - Not Found: crawler should abandon the URL that generated the error code
-## 500 - Internal Server Error: crawler should retry the request until successful
+    ## 200 - All clear
+    ## 301 - HTTP redirect: crawler should retry request using url returned in Location header
+    ## 403 - Forbidden: crawler should abandon the URL that generated the error code
+    ## 404 - Not Found: crawler should abandon the URL that generated the error code
+    ## 500 - Internal Server Error: crawler should retry the request until successful
 
 
 ########################
 ##  GLOBAL VARIABLES  ##
 ########################
 
+# username and password to log in to fakebook, to be given on program execution
+username = ''
+password = ''
 
+# my login credentials that I felt like saving for god knows what reason
 usernameMatt = 00005716
 passwordMatt = 'YG99AKBL'
 
-domain = 'http://fring.ccs.neu.edu/'
-httpPrefix = 'fakebook/'
+# domain prefix for use in ensuring the webcrawler doesn't leave the page and for separating out the profile ids
+domain = 'http://fring.ccs.neu.edu/fakebook/'
+
+
+######################################################################
+#   CLASS: WEBCRAWLER
+#
+#       ARGUMENTS
+#
+#           dbCount         - number of databases the webcrawler has
+#
+#       ADDITIONAL STORED VARIABLES
+#
+#           parser          - HTML parser
+#           pending         - the deque of fakebook profile ids the crawler has yet to visit
+#           databases       - the array of databases used by the web crawler, sorted by hash circle position
+#           secretFlags     - array of secret flags scraped from fakebook pages
+#
+#       METHODS
+#
+#           crawl           - main processing loop for the webcrawler, returns array of secret flag strings
+#           parsePageHTML   - GET and parse the HTML for a given URL
+#           generateURL     - returns the fakebook profile page URL from a given fakebook profile id
+#           hashId          - returns the hash of a given fakebook profile id
+#           addPending      - adds unvisited profile ids to the pending list
+#           markVisited     - mark a profileId as visited, storing it in the appropriate database
+#
+
+class WebCrawler:
+    # class constructor
+    def __init__(self, dbCount):
+        self.parser = CrawlerHTMLParser()
+        self.pending = deque()
+        self.databases = []
+        for i in range(dbCount):
+            self.databases.append(Database(i, (i / float(dbCount))))
+        self.secretFlags = []
+
+    # returns true if the database contains the given profile id
+    def crawl(self):
+        # if there are still unvisited profile ids, continue crawling
+        while len(self.pending) > 0:
+
+            # generate URL for id stored in pending[0]
+            url = self.generateURL(self.pending[0])
+            # pull page HTML for id stored in pending[0]
+            parsedHTML = self.parseHTML(url)
+
+    # return the fakebook url for a given profile id
+    def generateURL(self, id):
+
+        global domain
+        url = domain + str(id) + '/'
+        return url
+
+    #return the parsed HTML for a given URL
+    def parseHTML(self, url):
+        # GET page HTML
+        html = ''
+        # parse page HTML
+        parsed = self.parser.crawl(html)
+
+######################################################################
+#   CLASS: DATABASE
+#
+#       ARGUMENTS
+#
+#           id              - the id of this database
+#           position        - the position of the database on the hash circle (0.0-1.0)
+#
+#       ADDITIONAL STORED VARIABLES
+#
+#           visited         - the array of fakebook profile ids the crawler has visited
+#
+#       METHODS
+#
+#           hasVisited      - returns true if visited[] contains the given fakebook profile id
+#
+
+class Database:
+    # class constructor
+    def __init__(self, id, pos):
+        self.id = id
+        self.position = pos
+        self.visited = []
+
+    # method that returns true if the database contains the given profile id
+    def hasVisited(self, profileId):
+        containsId = False
+        for i in range(len(self.visited)):
+            if self.visited[i] == profileId:
+                containsId = True
+                break
+        return containsId
+
+
+######################################################################
+#   CLASS: CRAWLERHTMLPARSER FROM HTMLPARSER
+#
+#       METHODS (TO OVERRIDE)
+#
+#           handle_starttag - what parser should do when it reads a start tag   (ex: "<div id='one'>")
+#           handle_endtag   - what parser should do when it reads a start tag   (ex: "</div>")
+#           handle_data     - what parser should do when it reads some data     (ex: "<tag>data</tag>")
+#
+
+class CrawlerHTMLParser(HTMLParser):
+    def __init__(self):
+        self.ids = []
+        self.flags = []
+
+    # Override
+    def handle_starttag(self, tag, attrs):
+        if tag == 'a':
+            spliced = attrs
+        print "Encountered a start tag:", tag
+
+    # Override
+    def handle_endtag(self, tag):
+        print "Encountered an end tag :", tag
+
+    # Override
+    def handle_data(self, data):
+        print "Encountered some data  :", data
+
+    # Override
+    def reset(self):
+        self.ids = []
+        self.flags = []
+
+    def hasSecretFlags(self):
+        return len(self.flags) > 0
+
+    def crawl(self, html):
+        # process HTML
+        self.feed(html)
+
+
+# main processing logic
+def main():
+
+    global username
+    global password
+
+    #initialize username and password from command line arguments
+    if not len(sys.argv) == 2:
+        print "fakebook webcrawler requires a username and a password, exiting..."
+        sys.exit(1)
+    else:
+        username = sys.argv[0]
+        password = sys.argv[1]
+
+
+
+# run main()
+main()
+
