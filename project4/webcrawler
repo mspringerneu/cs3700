@@ -7,6 +7,7 @@ import datetime
 import select
 import json
 import urlparse
+import math
 from collections import deque
 from HTMLParser import HTMLParser
 
@@ -56,11 +57,14 @@ username = ''
 password = ''
 
 # my login credentials that I felt like saving for god knows what reason
-usernameMatt = 00005716
+usernameMatt = '000057168'
 passwordMatt = 'YG99AKBL'
 
 # domain prefix for use in ensuring the webcrawler doesn't leave the page and for separating out the profile ids
 domain = 'http://fring.ccs.neu.edu/fakebook/'
+
+# variable for use in the profile id hashing function
+hashCode = 256
 
 
 ######################################################################
@@ -90,6 +94,7 @@ domain = 'http://fring.ccs.neu.edu/fakebook/'
 class WebCrawler:
     # class constructor
     def __init__(self, dbCount):
+        self.dbCount = dbCount
         self.parser = CrawlerHTMLParser()
         self.pending = deque()
         self.databases = []
@@ -109,17 +114,34 @@ class WebCrawler:
 
     # return the fakebook url for a given profile id
     def generateURL(self, id):
-
         global domain
         url = domain + str(id) + '/'
         return url
+
+    # return the hashed value of a given profile id
+    def hashId(self, profileId):
+        global hashCode
+        return (profileId % hashCode) / float(hashCode)
+
+    # return the id of the database a hashedId should use
+    def getDatabase(self, hashedId):
+        return math.ceil(hashedId / float(1/self.dbCount)) % self.dbCount
 
     #return the parsed HTML for a given URL
     def parseHTML(self, url):
         # GET page HTML
         html = ''
-        # parse page HTML
+        # parse page HTML, return in format {"ids": [array], "s_flag": string (optional)}
         parsed = self.parser.crawl(html)
+        # if the page contained a secret_flag
+        if parsed['s_flag']:
+            self.secretFlags.append(parsed['s_flag'])
+        for i in parsed['ids']:
+            hash = self.hashId(i)
+            db = self.getDatabase(hash)
+            if not self.databases[db].hasVisited(i):
+                self.pending.append(i)
+
 
 ######################################################################
 #   CLASS: DATABASE
@@ -154,9 +176,25 @@ class Database:
                 break
         return containsId
 
+    # inserts a 'visited' profile id in the visited array, returns True if successfully inserted
+    def markVisited(self, profileId):
+        inserted = False
+        for i in range(len(self.visited)):
+            if self.visited[i] > profileId:
+                self.visited.insert(i, profileId)
+                inserted = True
+                break
+        return inserted
+
 
 ######################################################################
 #   CLASS: CRAWLERHTMLPARSER FROM HTMLPARSER
+#
+#       ADDITIONAL STORED VARIABLES
+#
+#           ids             - the array of fakebook profile ids the crawler has visited
+#           flag            - secret_flag string (if any)
+#           scanningIds     - boolean that is True whilst within a 'ul' tag, False otherwise
 #
 #       METHODS (TO OVERRIDE)
 #
@@ -168,16 +206,27 @@ class Database:
 class CrawlerHTMLParser(HTMLParser):
     def __init__(self):
         self.ids = []
-        self.flags = []
+        self.flag = ''
+        self.scanningIds = False
 
     # Override
     def handle_starttag(self, tag, attrs):
+        # if we encounter a 'ul' start tag, we are now scanning the list of profiles
+        if tag == 'ul':
+            self.scanningIds = True
+        # if we encounter an 'a' tag and we are within a 'ul' tag, append the profile id
         if tag == 'a':
-            spliced = attrs
+            if self.scanningIds:
+                url = attrs.get('href')
+                id = url.split('/')[1]
+                assert len(id) == 9
+                self.ids.append(int(id))
         print "Encountered a start tag:", tag
 
     # Override
     def handle_endtag(self, tag):
+        if tag == 'ul':
+            self.scanningIds = False
         print "Encountered an end tag :", tag
 
     # Override
@@ -187,14 +236,18 @@ class CrawlerHTMLParser(HTMLParser):
     # Override
     def reset(self):
         self.ids = []
-        self.flags = []
+        self.flag = ''
 
-    def hasSecretFlags(self):
-        return len(self.flags) > 0
+    def hasSecretFlag(self):
+        return len(self.flag) > 0
 
     def crawl(self, html):
         # process HTML
         self.feed(html)
+        if self.hasSecretFlag():
+            return {'ids': self.ids, 's_flag': self.flag}
+        else:
+            return {'ids': self.ids}
 
 
 # main processing logic
