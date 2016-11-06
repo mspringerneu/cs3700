@@ -1,0 +1,70 @@
+#!/usr/bin/python
+
+import socket
+import urlparse
+import re
+import os
+from HTMLParser import HTMLParser
+
+socket.setdefaulttimeout = 0.50
+os.environ['no_proxy'] = '127.0.0.1,localhost'
+linkRegex = re.compile('<a\s*href=[\'|"](.*?)[\'"].*?>')
+CR = "\r\n"
+CRLF = "\r\n\r\n"
+
+def GET(url):
+    url = urlparse.urlparse(url)
+    path = url.path
+    if path == "":
+        path = "/"
+    HOST = url.netloc  # The remote host
+    PORT = 80          # The same port as used by the server
+    # create an INET, STREAMing socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    """
+    ***********************************************************************************
+    * Note that the connect() operation is subject to the timeout setting,
+    * and in general it is recommended to call settimeout() before calling connect()
+    * or pass a timeout parameter to create_connection().
+    * The system network stack may return a connection timeout error of its own
+    * regardless of any Python socket timeout setting.
+    ***********************************************************************************
+    """
+    s.settimeout(0.30)
+    """
+    **************************************************************************************
+    * Avoid socket.error: [Errno 98] Address already in use exception
+    * The SO_REUSEADDR flag tells the kernel to reuse a local socket in TIME_WAIT state,
+    * without waiting for its natural timeout to expire.
+    **************************************************************************************
+    """
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    #s.setblocking(0)
+    s.connect((HOST, PORT))
+    s.send("GET " + path + " HTTP/1.0%s" % (CRLF))
+    data = (s.recv(1000000))
+    tokens = re.split('Set-Cookie: ', data)
+    csrf = re.split('csrftoken=', (re.split(';', tokens[1])[0]))[1]
+    sessionId = re.split('sessionid=', (re.split(';', tokens[2])[0]))[1]
+    print "CSRF Cookie: " + csrf + '\n'
+    print "Session ID Cookie: " + sessionId + '\n'
+    print data
+    post = ('POST /accounts/login/?next=/fakebook/ HTTP/1.0%s' \
+           'Host: fring.ccs.neu.edu%s' \
+           'Cookie: csrftoken=d8ad0c0fa5761f776f46473bf1ac4903; expires=Sun, 05-Nov-2017 19:35:59 GMT; Max-Age=31449600; Path=/%s' \
+           'Cookie: sessionid=12e020bb52daa75a57f2624ed8ca24a4; expires=Sun, 20-Nov-2016 19:35:59 GMT; Max-Age=1209600; Path=/%s' \
+           'Content-Type: application/x-www-form-urlencoded%s' \
+           'Content-Length: 36%s' \
+           'username=000057168&password=YG99AKBL%s' % (CR, CR, CR, CR, CR, CRLF, CRLF))
+    #s.send(post)
+    #data2 = (s.recv(1000000))
+    #print data2
+    # https://docs.python.org/2/howto/sockets.html#disconnecting
+    s.shutdown(1)
+    s.close()
+    #print 'Received', repr(data)
+
+def main():
+    GET('http://fring.ccs.neu.edu/accounts/login/?next=/fakebook/')
+
+main()

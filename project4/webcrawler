@@ -6,11 +6,24 @@ import time
 import datetime
 import select
 import json
-import urlparse
 import math
+import re
+import os
 from collections import deque
+from urlparse import urlparse
 from HTMLParser import HTMLParser
 
+
+#########################
+##  ILLEGAL LIBRARIES  ##
+#########################
+
+# urllib
+# urllib2
+# httplib
+# requests
+# pycurl
+# cookielib
 
 ###########################
 ##  HIGH-LEVEL APPROACH  ##
@@ -61,10 +74,56 @@ usernameMatt = '000057168'
 passwordMatt = 'YG99AKBL'
 
 # domain prefix for use in ensuring the webcrawler doesn't leave the page and for separating out the profile ids
-domain = 'http://fring.ccs.neu.edu/fakebook/'
+domain = 'http://fring.ccs.neu.edu'
+login = '/accounts/login/?next=/fakebook/'
 
 # variable for use in the profile id hashing function
 hashCode = 256
+
+
+########################
+##  FAKEBOOK COOKIES  ##
+########################
+
+# Fakebook stores two (2) cookies:
+
+# csrftoken
+
+#########################################################
+# Name:	csrftoken                                       #
+# Content:	8f3d3ef726e08ca2473e3955b8cd1f89            #
+# Domain:	fring.ccs.neu.edu                           #
+# Path:	/                                               #
+# Send for:	Any kind of connection                      #
+# Accessible to script:	Yes                             #
+# Created:	Sunday, November 6, 2016 at 12:52:03 PM     #
+# Expires:	Sunday, November 5, 2017 at 12:52:03 PM     #
+#########################################################
+
+csrfToken = ''
+
+# sessionid
+
+#########################################################
+# Name:	sessionid                                       #
+# Content:	04fd7a109bb72170d319ef41bf3c39a3            #
+# Domain:	fring.ccs.neu.edu                           #
+# Path:	/                                               #
+# Send for:	Any kind of connection                      #
+# Accessible to script:	Yes                             #
+# Created:	Sunday, November 6, 2016 at 12:52:17 PM     #
+# Expires:	Sunday, November 20, 2016 at 12:52:17 PM    #
+#########################################################
+
+sessionIdToken = ''
+
+
+# socket variables
+socket.setdefaulttimeout = 0.50
+os.environ['no_proxy'] = '127.0.0.1,localhost'
+linkRegex = re.compile('<a\s*href=[\'|"](.*?)[\'"].*?>')
+CR = "\r\n"
+CRLF = "\r\n\r\n"
 
 
 ######################################################################
@@ -76,6 +135,7 @@ hashCode = 256
 #
 #       ADDITIONAL STORED VARIABLES
 #
+#           socket          - INET, STREAMing socket for handlingHTTP requests
 #           parser          - HTML parser
 #           pending         - the deque of fakebook profile ids the crawler has yet to visit
 #           databases       - the array of databases used by the web crawler, sorted by hash circle position
@@ -95,6 +155,7 @@ class WebCrawler:
     # class constructor
     def __init__(self, dbCount):
         self.dbCount = dbCount
+        #self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.parser = CrawlerHTMLParser()
         self.pending = deque()
         self.databases = []
@@ -141,6 +202,137 @@ class WebCrawler:
             db = self.getDatabase(hash)
             if not self.databases[db].hasVisited(i):
                 self.pending.append(i)
+
+    # logic for HTTP GET requests
+    # SOURCE: http://stackoverflow.com/questions/5755507/creating-a-raw-http-request-with-sockets
+    def GET(self, pageUrl):
+        global CRLF
+        global CR
+        url = urlparse(pageUrl)
+        path = url.path
+        if path == "":
+            path = "/"
+        HOST = url.netloc  # The remote host
+        PORT = 80  # The same port as used by the server
+        # create an INET, STREAMing socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        """
+        ***********************************************************************************
+        * Note that the connect() operation is subject to the timeout setting,
+        * and in general it is recommended to call settimeout() before calling connect()
+        * or pass a timeout parameter to create_connection().
+        * The system network stack may return a connection timeout error of its own
+        * regardless of any Python socket timeout setting.
+        ***********************************************************************************
+        """
+        s.settimeout(0.30)
+        """
+        **************************************************************************************
+        * Avoid socket.error: [Errno 98] Address already in use exception
+        * The SO_REUSEADDR flag tells the kernel to reuse a local socket in TIME_WAIT state,
+        * without waiting for its natural timeout to expire.
+        **************************************************************************************
+        """
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # s.setblocking(0)
+        s.connect((HOST, PORT))
+        s.send("GET " + path + " HTTP/1.0%s" % (CRLF))
+        data = (s.recv(1000000))
+        print data
+        # s.send(post)
+        # data2 = (s.recv(1000000))
+        # print data2
+        # https://docs.python.org/2/howto/sockets.html#disconnecting
+        s.shutdown(1)
+        s.close()
+        return data
+        # print 'Received', repr(data)
+
+    # logic for HTTP GET requests
+    # SOURCE: http://stackoverflow.com/questions/5755507/creating-a-raw-http-request-with-sockets
+    def POST(self, msg, pageUrl):
+        global CR
+        global CRLF
+
+        url = urlparse(pageUrl)
+        path = url.path
+        if path == "":
+            path = "/"
+        HOST = url.netloc  # The remote host
+        PORT = 80  # The same port as used by the server
+        # create an INET, STREAMing socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        """
+        ***********************************************************************************
+        * Note that the connect() operation is subject to the timeout setting,
+        * and in general it is recommended to call settimeout() before calling connect()
+        * or pass a timeout parameter to create_connection().
+        * The system network stack may return a connection timeout error of its own
+        * regardless of any Python socket timeout setting.
+        ***********************************************************************************
+        """
+        s.settimeout(0.30)
+        """
+        **************************************************************************************
+        * Avoid socket.error: [Errno 98] Address already in use exception
+        * The SO_REUSEADDR flag tells the kernel to reuse a local socket in TIME_WAIT state,
+        * without waiting for its natural timeout to expire.
+        **************************************************************************************
+        """
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # s.setblocking(0)
+        s.connect((HOST, PORT))
+        s.send(msg)
+        data = (s.recv(1000000))
+        print data
+        # s.send(post)
+        # data2 = (s.recv(1000000))
+        # print data2
+        # https://docs.python.org/2/howto/sockets.html#disconnecting
+        s.shutdown(1)
+        s.close()
+        # print 'Received', repr(data)
+
+    def extractCSRF(self, data):
+        global csrfToken
+        token = re.search("csrftoken=(.*);", data)
+        token = re.split(';', token.group(0))[0]
+        csrfToken = token
+
+    def extractSessionId(self, data):
+        global sessionIdToken
+        token = re.search("sessionid=(.*);", data)
+        token = re.split(';', token.group(0))[0]
+        sessionIdToken = token
+
+    def login(self):
+        global domain
+        global login
+        global username
+        global password
+
+        url = domain + login
+
+        data = self.GET(url)
+        self.extractCSRF(data)
+        self.extractSessionId(data)
+
+        print csrfToken
+        print sessionIdToken
+
+        loginPost = ('POST /accounts/login/?next=/fakebook/ HTTP/1.0%s'
+                     'Host: fring.ccs.neu.edu%s'
+                     'Connection: Keep-Alive%s'
+                     'Cookie: %s; %s%s'
+                     'Content-Type: application/x-www-form-urlencoded%s'
+                     'Content-Length: 105%s'
+                     'username=000057168&password=YG99AKBL&csrfmiddlewaretoken=%s&next=/fakebook/%s' % (
+                     CR, CR, CR, csrfToken, sessionIdToken, CR, CR, CRLF, csrfToken, CRLF))
+
+        data = self.POST(loginPost, url)
+
+
+
 
 
 ######################################################################
@@ -194,7 +386,8 @@ class Database:
 #
 #           ids             - the array of fakebook profile ids the crawler has visited
 #           flag            - secret_flag string (if any)
-#           scanningIds     - boolean that is True whilst within a 'ul' tag, False otherwise
+#           scanIds         - boolean that is True whilst within a 'ul' tag, False otherwise
+#           scanSFs         - boolean that is True whilst in a <h2 class='secret_flag> tag, False otherwise
 #
 #       METHODS (TO OVERRIDE)
 #
@@ -207,30 +400,39 @@ class CrawlerHTMLParser(HTMLParser):
     def __init__(self):
         self.ids = []
         self.flag = ''
-        self.scanningIds = False
+        self.scanIds = False
+        self.scanSFs = False
 
     # Override
     def handle_starttag(self, tag, attrs):
         # if we encounter a 'ul' start tag, we are now scanning the list of profiles
         if tag == 'ul':
-            self.scanningIds = True
+            self.scanIds = True
         # if we encounter an 'a' tag and we are within a 'ul' tag, append the profile id
-        if tag == 'a':
-            if self.scanningIds:
+        elif tag == 'a':
+            if self.scanIds:
                 url = attrs.get('href')
                 id = url.split('/')[1]
                 assert len(id) == 9
                 self.ids.append(int(id))
+        elif tag == 'h2':
+            if attrs.get('class') == 'secret_flag':
+                self.scanSFs = True
         print "Encountered a start tag:", tag
 
     # Override
     def handle_endtag(self, tag):
         if tag == 'ul':
-            self.scanningIds = False
+            self.scanIds = False
+        elif tag == 'h2':
+            if self.scanSFs:
+                self.scanSFs = False
         print "Encountered an end tag :", tag
 
     # Override
     def handle_data(self, data):
+        if self.scanSFs:
+            self.flag = data
         print "Encountered some data  :", data
 
     # Override
@@ -250,6 +452,10 @@ class CrawlerHTMLParser(HTMLParser):
             return {'ids': self.ids}
 
 
+# socket logic - SOURCE: http://stackoverflow.com/questions/5755507/creating-a-raw-http-request-with-sockets
+
+
+
 # main processing logic
 def main():
 
@@ -257,12 +463,18 @@ def main():
     global password
 
     #initialize username and password from command line arguments
-    if not len(sys.argv) == 2:
+    print sys.argv
+    if not len(sys.argv) == 3:
         print "fakebook webcrawler requires a username and a password, exiting..."
         sys.exit(1)
     else:
-        username = sys.argv[0]
-        password = sys.argv[1]
+        username = sys.argv[1]
+        password = sys.argv[2]
+
+    # initialize crawler
+    crawler = WebCrawler(10)
+    crawler.login()
+
 
 
 

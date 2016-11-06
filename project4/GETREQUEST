@@ -1,0 +1,25 @@
+GET /accounts/login/?next=/fakebook/ HTTP/1.0
+Host: fring.ccs.neu.edu
+Connection: Keep-Alive
+Accept-Encoding: gzip
+Set-Cookie: Name=csrftoken; Content=8f3d3ef726e08ca2473e3955b8cd1f89; Domain=fring.ccs.neu.edu; Path=/; Send for=Any kind of connection; Accessible to script=Yes; Created=Sunday, November 6, 2016 at 12:52:03 PM; Expires=Sunday, November 5, 2017 at 12:52:03 PM
+
+
+POST /accounts/login/?next=/fakebook/ HTTP/1.0
+Host: fring.ccs.neu.edu
+Connection: Keep-Alive
+Cookie: csrftoken=6a97e429ce0d68950490f823ee77be1c; sessionid=2c86719b2ca33121599494b4bd78d931
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 105
+
+username=000057168&password=YG99AKBL&csrfmiddlewaretoken=6a97e429ce0d68950490f823ee77be1c&next=/fakebook/
+
+GET /fakebook/193535714/friends/1/ HTTP/1.0
+Accept: text/html
+Host: fring.ccs.neu.edu
+Connection: Keep-Alive
+Cookie: csrftoken=6a97e429ce0d68950490f823ee77be1c; sessionid=7696584eb2327b7e25a040dc51812310
+
+
+
+
