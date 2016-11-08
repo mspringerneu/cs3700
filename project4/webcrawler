@@ -76,9 +76,13 @@ passwordMatt = 'YG99AKBL'
 # domain prefix for use in ensuring the webcrawler doesn't leave the page and for separating out the profile ids
 domain = 'http://fring.ccs.neu.edu'
 login = '/accounts/login/?next=/fakebook/'
+home = '/fakebook/'
 
 # variable for use in the profile id hashing function
 hashCode = 256
+
+# timeout variable
+timeout = 0.3
 
 
 ########################
@@ -137,7 +141,7 @@ CRLF = "\r\n\r\n"
 #
 #           socket          - INET, STREAMing socket for handlingHTTP requests
 #           parser          - HTML parser
-#           pending         - the deque of fakebook profile ids the crawler has yet to visit
+#           frontier         - the deque of fakebook profile ids the crawler has yet to visit
 #           databases       - the array of databases used by the web crawler, sorted by hash circle position
 #           secretFlags     - array of secret flags scraped from fakebook pages
 #
@@ -147,7 +151,7 @@ CRLF = "\r\n\r\n"
 #           parsePageHTML   - GET and parse the HTML for a given URL
 #           generateURL     - returns the fakebook profile page URL from a given fakebook profile id
 #           hashId          - returns the hash of a given fakebook profile id
-#           addPending      - adds unvisited profile ids to the pending list
+#           expandFrontier  - adds unvisited profile ids to the frontier list
 #           markVisited     - mark a profileId as visited, storing it in the appropriate database
 #
 
@@ -157,7 +161,7 @@ class WebCrawler:
         self.dbCount = dbCount
         #self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.parser = CrawlerHTMLParser()
-        self.pending = deque()
+        self.frontier = deque()
         self.databases = []
         for i in range(dbCount):
             self.databases.append(Database(i, (i / float(dbCount))))
@@ -166,48 +170,114 @@ class WebCrawler:
     # returns true if the database contains the given profile id
     def crawl(self):
         # if there are still unvisited profile ids, continue crawling
-        while len(self.pending) > 0:
+        while len(self.frontier) > 0 and len(self.secretFlags) < 5:
+            profileId = self.frontier[0]
+            friendsList = []
+            profileURL = currentUrl = domain + home + str(profileId) + "/"
+            friendsURL = currentUrl = domain + home + str(profileId) + "/friends/1/"
 
-            # generate URL for id stored in pending[0]
-            url = self.generateURL(self.pending[0])
-            # pull page HTML for id stored in pending[0]
-            parsedHTML = self.parseHTML(url)
+            print profileURL
+            profilePage = self.GET(currentUrl, True)
+            parsedProfilePage = self.parseHTML(profilePage)
+
+            # scan all of the user's 'friends' pages
+            scanningFriends = True
+            while scanningFriends:
+                status = True
+                print friendsURL
+                friendsPage = self.GET(friendsURL, True)
+                parsedFriendsPage = self.parseHTML(friendsPage)
+                if len(parsedFriendsPage['nextURL']) > 0:
+                    friendsURL = domain + parsedFriendsPage['nextURL']
+                else:
+                    scanningFriends = False
+                for i in parsedFriendsPage['ids']:
+                    friendsList.append(i)
+
+            # add unvisited profile ids to the frontier
+            self.expandFrontier(friendsList)
+            # store the current profile id in the appropriate database
+            self.markVisited(profileId)
+            # pop the current profile id from the frontier
+            self.frontier.popleft()
+
+        # crawl has finished
+        for i in self.secretFlags:
+            print i
+        sys.exit(0)
+
+    # checks an array of profile ids, adding the unvisited ones to the frontier
+    def expandFrontier(self, profileIds):
+        for i in profileIds:
+            self.handleProfileId(i)
+
+    def markVisited(self, profileId):
+        hashedID = self.hashId(profileId)
+        print "Hashed ID for profile ID " + str(profileId) + ": " + str(hashedID)
+        db = self.getDatabase(hashedID)
+        print "Storing profile ID " + str(profileId) + " in database with ID " + str(db.id)
+        db.markVisited(profileId)
+
+    # evaluate a profile id.  If it has not been visited, add it to the frontier, otherwise do nothing
+    def handleProfileId(self, profileId):
+        hashedID = self.hashId(profileId)
+        print "Hashed ID for " + str(profileId) + ": " + str(hashedID)
+        db = self.getDatabase(hashedID)
+        print "Checking database with ID " + str(db.id)
+        if db.hasVisited(hashedID):
+            print "Profile ID " + str(profileId) + " already visited.  Ignoring..."
+        else:
+            print "Profile ID " + str(profileId) + " has not been visited.  Expanding the frontier..."
+            self.frontier.append(profileId)
+
+    # handle various HTTP status codes
+    def getHTTPStatusCode(self, header):
+        status = re.search("HTTP/1.1 (.*)\r\n", header)
+        if not status == None:
+            status = re.split(' ', status.group(1))[0]
+            print "HTTP status code: " + status
+            return int(status)
+        else:
+            print "HTTP status code could not be parsed. Retrying HTTP request..."
+            return -1
 
     # return the fakebook url for a given profile id
-    def generateURL(self, id):
+    def generateURL(self, profileId):
         global domain
-        url = domain + str(id) + '/'
+        url = domain + str(profileId) + '/'
         return url
 
     # return the hashed value of a given profile id
     def hashId(self, profileId):
         global hashCode
+        # produces a floating point number between 0 and 1
         return (profileId % hashCode) / float(hashCode)
 
     # return the id of the database a hashedId should use
     def getDatabase(self, hashedId):
-        return math.ceil(hashedId / float(1/self.dbCount)) % self.dbCount
+        dbId = math.ceil(hashedId / 1/ float(self.dbCount)) % self.dbCount
+        for i in self.databases:
+            if i.id == dbId:
+                return i
 
-    #return the parsed HTML for a given URL
-    def parseHTML(self, url):
-        # GET page HTML
-        html = ''
+    # return the parsed HTML for a given URL
+    def parseHTML(self, html):
         # parse page HTML, return in format {"ids": [array], "s_flag": string (optional)}
         parsed = self.parser.crawl(html)
+        self.parser.reset()
         # if the page contained a secret_flag
-        if parsed['s_flag']:
+        if len(parsed['s_flag']) > 0:
             self.secretFlags.append(parsed['s_flag'])
-        for i in parsed['ids']:
-            hash = self.hashId(i)
-            db = self.getDatabase(hash)
-            if not self.databases[db].hasVisited(i):
-                self.pending.append(i)
+        return parsed
 
     # logic for HTTP GET requests
     # SOURCE: http://stackoverflow.com/questions/5755507/creating-a-raw-http-request-with-sockets
-    def GET(self, pageUrl):
+    def GET(self, pageUrl, cookies):
         global CRLF
         global CR
+        global csrfToken
+        global sessionIdToken
+
         url = urlparse(pageUrl)
         path = url.path
         if path == "":
@@ -215,6 +285,9 @@ class WebCrawler:
         HOST = url.netloc  # The remote host
         PORT = 80  # The same port as used by the server
         # create an INET, STREAMing socket
+
+        timer = time.time()
+
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         """
         ***********************************************************************************
@@ -236,9 +309,36 @@ class WebCrawler:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         # s.setblocking(0)
         s.connect((HOST, PORT))
-        s.send("GET " + path + " HTTP/1.0%s" % (CRLF))
-        data = (s.recv(1000000))
-        print data
+
+        if cookies:
+            sendMsg = ('GET %s HTTP/1.1%s'
+                       'Host: fring.ccs.neu.edu%s'
+                       'Connection: Close%s'
+                       'Cookie: csrftoken=%s; sessionid=%s%s' % (path, CR, CR, CR, csrfToken, sessionIdToken, CRLF))
+        else:
+            sendMsg = ('GET %s HTTP/1.1%s'
+                       'Host: fring.ccs.neu.edu%s'
+                       'Connection: Close%s' % (path, CR, CR, CRLF))
+
+        print sendMsg
+
+        corrupt = True
+        data = ''
+        while corrupt:
+            s.send(sendMsg)
+            data = (s.recv(1000000))
+            print data
+            statusCode = self.getHTTPStatusCode(data)
+            if statusCode == 200:
+                corrupt = False
+            elif statusCode == 403:
+                print "HTTP/1.1 403 Forbidden Error, webcrawler terminating..."
+                sys.exit(1)
+            elif statusCode == 404:
+                print "HTTP/1.1 404 Page Not Found Error, webcrawler terminating..."
+                sys.exit(1)
+            else:
+                continue
         # s.send(post)
         # data2 = (s.recv(1000000))
         # print data2
@@ -250,9 +350,11 @@ class WebCrawler:
 
     # logic for HTTP GET requests
     # SOURCE: http://stackoverflow.com/questions/5755507/creating-a-raw-http-request-with-sockets
-    def POST(self, msg, pageUrl):
+    def POST(self, msg, pageUrl, cookies):
         global CR
         global CRLF
+        global csrfToken
+        global sessionIdToken
 
         url = urlparse(pageUrl)
         path = url.path
@@ -282,9 +384,23 @@ class WebCrawler:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         # s.setblocking(0)
         s.connect((HOST, PORT))
-        s.send(msg)
-        data = (s.recv(1000000))
-        print data
+        corrupt = True
+        data = ''
+        while corrupt:
+            s.send(msg)
+            data = (s.recv(1000000))
+            print data
+            statusCode = self.getHTTPStatusCode(data)
+            if statusCode == 302:
+                corrupt = False
+            elif statusCode == 403:
+                print "HTTP/1.1 403 Forbidden Error, webcrawler terminating..."
+                sys.exit(1)
+            elif statusCode == 404:
+                print "HTTP/1.1 404 Page Not Found Error, webcrawler terminating..."
+                sys.exit(1)
+            else:
+                continue
         # s.send(post)
         # data2 = (s.recv(1000000))
         # print data2
@@ -292,47 +408,67 @@ class WebCrawler:
         s.shutdown(1)
         s.close()
         # print 'Received', repr(data)
+        return data
 
     def extractCSRF(self, data):
         global csrfToken
-        token = re.search("csrftoken=(.*);", data)
-        token = re.split(';', token.group(0))[0]
-        csrfToken = token
+        token = re.search("csrftoken=(.*); ex", data)
+        #token = re.split(';', token.group(0))[0]
+        csrfToken = token.group(1)
 
     def extractSessionId(self, data):
         global sessionIdToken
-        token = re.search("sessionid=(.*);", data)
-        token = re.split(';', token.group(0))[0]
-        sessionIdToken = token
+        token = re.search("sessionid=(.*); ex", data)
+        #token = re.split(';', token.group(0))[0]
+        sessionIdToken = token.group(1)
 
     def login(self):
         global domain
         global login
+        global home
         global username
         global password
+        global csrfToken
+        global sessionIdToken
 
         url = domain + login
 
-        data = self.GET(url)
+        print "URL: " + url
+
+        data = self.GET(url, False)
         self.extractCSRF(data)
         self.extractSessionId(data)
 
-        print csrfToken
-        print sessionIdToken
+        print "CSRF Token: " + csrfToken
+        print "Session ID Token: " + sessionIdToken
 
-        loginPost = ('POST /accounts/login/?next=/fakebook/ HTTP/1.0%s'
+        loginPost = ('POST /accounts/login/?next=/fakebook/ HTTP/1.1%s'
                      'Host: fring.ccs.neu.edu%s'
-                     'Connection: Keep-Alive%s'
-                     'Cookie: %s; %s%s'
+                     'Connection: Close%s'
+                     'Cookie: csrftoken=%s; sessionid=%s%s'
                      'Content-Type: application/x-www-form-urlencoded%s'
                      'Content-Length: 105%s'
                      'username=000057168&password=YG99AKBL&csrfmiddlewaretoken=%s&next=/fakebook/%s' % (
                      CR, CR, CR, csrfToken, sessionIdToken, CR, CR, CRLF, csrfToken, CRLF))
 
-        data = self.POST(loginPost, url)
+        print "POST message: " + loginPost
 
+        data = self.POST(loginPost, url, False)
+        self.extractSessionId(data)
+        print "Authenticated Session ID Token: " + sessionIdToken
 
+        data = self.GET(domain + home, True)
+        return data
 
+    def initializeCrawler(self):
+        homepage = self.login()
+        crawled_homepage = self.parser.crawl(homepage)
+        if len(crawled_homepage['s_flag']) > 0:
+            self.secretFlags.append(crawled_homepage['s_flag'])
+        if crawled_homepage['ids']:
+            for i in crawled_homepage['ids']:
+                self.frontier.append(i)
+        print self.frontier
 
 
 ######################################################################
@@ -398,47 +534,74 @@ class Database:
 
 class CrawlerHTMLParser(HTMLParser):
     def __init__(self):
-        self.ids = []
-        self.flag = ''
-        self.scanIds = False
-        self.scanSFs = False
+        self.reset()
 
     # Override
     def handle_starttag(self, tag, attrs):
         # if we encounter a 'ul' start tag, we are now scanning the list of profiles
         if tag == 'ul':
-            self.scanIds = True
+            for attr, value in attrs:
+                if (attr, value) == ('id', 'pagelist'):
+                    self.scanNextURL = True
+            if not self.scanNextURL:
+                self.scanIds = True
         # if we encounter an 'a' tag and we are within a 'ul' tag, append the profile id
         elif tag == 'a':
             if self.scanIds:
-                url = attrs.get('href')
-                id = url.split('/')[1]
-                assert len(id) == 9
-                self.ids.append(int(id))
+                for attr, value in attrs:
+                    if attr == 'href':
+                        id = re.split('/', value)[2]
+                        print id
+                        #assert len(id) == 9 or len(id) == 8
+                        self.ids.append(int(id))
+            elif self.scanNextURL:
+                for attr, value in attrs:
+                    if attr == 'href':
+                        self.nextURL = value
         elif tag == 'h2':
-            if attrs.get('class') == 'secret_flag':
-                self.scanSFs = True
-        print "Encountered a start tag:", tag
+            for attr, value in attrs:
+                if (attr, value) == ('class', 'secret_flag'):
+                    self.scanSFs = True
+        elif tag == 'html':
+            self.scanHeader = False
+        # print "Encountered a start tag:", tag
 
     # Override
     def handle_endtag(self, tag):
         if tag == 'ul':
-            self.scanIds = False
+            if self.scanIds:
+                self.scanIds = False
+            elif self.scanNextURL:
+                self.scanNextURL = False
         elif tag == 'h2':
             if self.scanSFs:
                 self.scanSFs = False
-        print "Encountered an end tag :", tag
+        # print "Encountered an end tag :", tag
 
     # Override
     def handle_data(self, data):
-        if self.scanSFs:
+        if self.scanHeader:
+            self.header = data
+        elif self.scanSFs:
             self.flag = data
-        print "Encountered some data  :", data
+        elif self.scanNextURL:
+            if data == 'next':
+                self.scanNextURL = False
+                self.hasNext = True
+        # print "Encountered some data  :", data
 
     # Override
     def reset(self):
+        self.header = ''
+        self.nextURL = ''
         self.ids = []
         self.flag = ''
+        self.scanHeader = True
+        self.scanNextURL = False
+        self.hasNext = False
+        self.scanIds = False
+        self.scanSFs = False
+        HTMLParser.reset(self)
 
     def hasSecretFlag(self):
         return len(self.flag) > 0
@@ -446,15 +609,23 @@ class CrawlerHTMLParser(HTMLParser):
     def crawl(self, html):
         # process HTML
         self.feed(html)
-        if self.hasSecretFlag():
-            return {'ids': self.ids, 's_flag': self.flag}
-        else:
-            return {'ids': self.ids}
+        if not self.hasNext:
+            self.nextURL = ''
+
+        retVal = {
+                    'header': self.header,
+                    'ids': self.ids,
+                    's_flag': self.flag,
+                    'nextURL': self.nextURL
+                  }
+        print retVal
+        return retVal
 
 
 # socket logic - SOURCE: http://stackoverflow.com/questions/5755507/creating-a-raw-http-request-with-sockets
 
-
+# 676323867
+# 676323867
 
 # main processing logic
 def main():
@@ -473,9 +644,16 @@ def main():
 
     # initialize crawler
     crawler = WebCrawler(10)
-    crawler.login()
-
-
+    crawler.initializeCrawler()
+    crawler.crawl()
+    """
+    friendsURL = domain + home + str(crawler.frontier[0]) + "/friends/1/"
+    page = crawler.GET(friendsURL, True)
+    parsed = crawler.parser.crawl(page)
+    print parsed
+    crawler.getHTTPStatusCode(parsed['header'])
+    crawler.getHTTPStatusCode(page)
+    """
 
 
 # run main()
