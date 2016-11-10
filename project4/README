@@ -1,0 +1,21 @@
+** High Level Approach **
+For this project we continued to use python, due to our positive experiences
+with the language during the first three assignments. For parsing HTML we 
+used url parse and HTMLParser. We also leveraged regular expressions to
+split the response into the header and the html data. While we were building
+out these features we also implemented compressed HTTP responses using gzip,
+zlib, and StringIO. Additionally we used a consistent hashing algorithm to store
+profile ids across a number of deques. This aided in look up and storage time 
+during program execution.
+** Challenges **
+We encountered some minor challenges while building out this program. At one 
+point we stopped scrapping each user’s homepage (we were only scrapping their friends urls),
+and this obviously led to some confusion about why we were not able to find any secret flags.
+Compressing the HTTP response also was a long process with a lot of debugging. Initially we 
+also struggled to make sure the headers of the HTTP requests were correctly formatted. 
+** Testing **
+Testing for this assignment was tricky because of the huge amount of data that 
+was being processed by our program. When we encountered bugs- we would use
+selective print statements to print out state variables relevant to that bug.
+We also kept track of the number of pages we visited and the amount of time the
+process took us to bench mark our progress. 
