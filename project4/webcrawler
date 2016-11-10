@@ -170,6 +170,7 @@ class WebCrawler:
             self.databases.append(Database(i, (i / float(dbCount))))
         self.secretFlags = []
         self.pagesParsed = 0
+        self.profilesVisited = 0
 
     # returns true if the database contains the given profile id
     def crawl(self):
@@ -183,6 +184,7 @@ class WebCrawler:
 
             #print profileURL
             profilePage = self.GET(currentUrl, True)
+            self.scanForSecretFlag(profilePage['data'])
             parsedProfilePage = self.parseHTML(profilePage['data'])
 
             # scan all of the user's 'friends' pages
@@ -191,6 +193,7 @@ class WebCrawler:
                 status = True
                 print friendsURL
                 friendsPage = self.GET(friendsURL, True)
+                self.scanForSecretFlag(friendsPage['data'])
                 parsedFriendsPage = self.parseHTML(friendsPage['data'])
                 if len(parsedFriendsPage['nextURL']) > 0:
                     friendsURL = domain + parsedFriendsPage['nextURL']
@@ -205,8 +208,10 @@ class WebCrawler:
             self.markVisited(profileId)
             # pop the current profile id from the frontier
             self.frontier.popleft()
+            self.profilesVisited = self.profilesVisited + 1
 
         # crawl has finished
+        """
         print "********************************"
         print "**                            **"
         print "**        SECRET FLAGS        **"
@@ -219,7 +224,9 @@ class WebCrawler:
         print "**        SECRET FLAGS        **"
         print "**                            **"
         print "********************************"
+        """
         print "Pages Parsed: " + str(self.pagesParsed)
+        print "Profiles Visited: " + str(self.profilesVisited)
         executionTimer = time.time() - timer
         mins = math.floor(executionTimer / 60)
         secs = executionTimer % 60
@@ -275,6 +282,16 @@ class WebCrawler:
         else:
             #print "HTTP status code could not be parsed. Retrying HTTP request..."
             return -1
+
+    def scanForSecretFlag(self, data):
+        flag = re.search("FLAG: (.*)</h2>", data)
+        if not flag == None:
+            flag = flag.group(1)
+            print flag
+            sys.exit(5)
+            return True
+        else:
+            return False
 
     # unzips gzipped data
     def unzip(self, response):
@@ -564,8 +581,11 @@ class WebCrawler:
         homepage = self.login()
         crawled_homepage = self.parser.crawl(homepage['data'])
         self.pagesParsed = self.pagesParsed + 1
+        self.scanForSecretFlag(homepage['data'])
+        """
         if len(crawled_homepage['s_flag']) > 0:
             self.secretFlags.append(crawled_homepage['s_flag'])
+        """
         if crawled_homepage['ids']:
             for i in crawled_homepage['ids']:
                 self.frontier.append(i)
@@ -665,18 +685,12 @@ class CrawlerHTMLParser(HTMLParser):
                 for attr, value in attrs:
                     if attr == 'href':
                         self.nextURL = value
-        """
         elif tag == 'h2':
             for attr, value in attrs:
-                if (attr, value) == ('class', 'secret_flag'):
-                    self.scanSFs = True
-                    self.flag = str(tag) + str(attrs)
-        elif tag == 'h3':
-            for attr, value in attrs:
-                if (attr, value) == ('class', 'secret_flag'):
-                    self.scanSFs = True
-                    self.flag = str(tag) + str(attrs)
-        """
+                if attr == 'class' and value == 'secret_flag':
+                    sys.exit(4)
+                    #self.scanSFs = True
+                    #self.flag = str(tag) + str(attrs)
         # print "Encountered a start tag:", tag
 
     # Override
@@ -688,10 +702,6 @@ class CrawlerHTMLParser(HTMLParser):
                 self.scanNextURL = False
         """
         elif tag == 'h2':
-            if self.scanSFs:
-                self.flag = self.flag + str(tag)
-                self.scanSFs = False
-        elif tag == 'h3':
             if self.scanSFs:
                 self.flag = self.flag + str(tag)
                 self.scanSFs = False

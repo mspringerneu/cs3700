@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="e5cce298-bdf3-446d-8bd6-31273f047b3b" name="Default" comment="Continued high-level abstraction">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/misc.xml" afterPath="$PROJECT_DIR$/.idea/misc.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/project4.iml" afterPath="$PROJECT_DIR$/.idea/project4.iml" />
+    <list default="true" id="e5cce298-bdf3-446d-8bd6-31273f047b3b" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/secret_flags" afterPath="$PROJECT_DIR$/secret_flags" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/webcrawler" afterPath="$PROJECT_DIR$/webcrawler" />
     </list>
     <ignored path="project4.iws" />
@@ -31,8 +28,8 @@
           <file leaf-file-name="webcrawler" pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/webcrawler">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="-765">
-                  <caret line="263" column="13" selection-start-line="263" selection-start-column="13" selection-end-line="263" selection-end-column="13" />
+                <state relative-caret-position="5319">
+                  <caret line="690" column="31" selection-start-line="690" selection-start-column="31" selection-end-line="690" selection-end-column="31" />
                   <folding>
                     <element signature="e#19#29#0" expanded="true" />
                   </folding>
@@ -57,8 +54,8 @@
           <file leaf-file-name="webcrawler" pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/webcrawler">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="12">
-                  <caret line="328" column="4" selection-start-line="328" selection-start-column="4" selection-end-line="339" selection-end-column="21" />
+                <state relative-caret-position="117">
+                  <caret line="689" column="62" selection-start-line="689" selection-start-column="62" selection-end-line="689" selection-end-column="62" />
                   <folding>
                     <element signature="e#19#29#0" expanded="true" />
                   </folding>
@@ -94,8 +91,8 @@
       <list>
         <option value="$PROJECT_DIR$/websocket" />
         <option value="$PROJECT_DIR$/secret_flags" />
-        <option value="$PROJECT_DIR$/webcrawler" />
         <option value="$PROJECT_DIR$/testing" />
+        <option value="$PROJECT_DIR$/webcrawler" />
       </list>
     </option>
   </component>
@@ -130,7 +127,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
+      <pane id="Scratches" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -151,7 +148,7 @@
           </PATH>
         </subPane>
       </pane>
-      <pane id="Scratches" />
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -338,14 +335,21 @@
       <option name="project" value="LOCAL" />
       <updated>1478279784636</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Successful site navigation, unable to parse secret_flags">
+      <created>1478739061719</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1478739061719</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="ToolWindowManager">
     <frame x="30" y="22" width="1250" height="778" extended-state="6" />
-    <editor active="true" />
+    <editor active="false" />
     <layout>
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.096" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.096" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3281704" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
@@ -377,7 +381,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Continued high-level abstraction" />
-    <option name="LAST_COMMIT_MESSAGE" value="Continued high-level abstraction" />
+    <MESSAGE value="Successful site navigation, unable to parse secret_flags" />
+    <option name="LAST_COMMIT_MESSAGE" value="Successful site navigation, unable to parse secret_flags" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -390,9 +395,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="165">
           <caret line="15" column="32" selection-start-line="8" selection-start-column="0" selection-end-line="64" selection-end-column="33" />
-          <folding>
-            <element signature="e#19#32#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -420,9 +422,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="72">
           <caret line="8" column="0" selection-start-line="8" selection-start-column="0" selection-end-line="64" selection-end-column="33" />
-          <folding>
-            <element signature="e#19#32#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -462,9 +461,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="15">
           <caret line="15" column="32" selection-start-line="8" selection-start-column="0" selection-end-line="64" selection-end-column="33" />
-          <folding>
-            <element signature="e#19#32#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -486,8 +482,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/webcrawler">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="12">
-          <caret line="328" column="4" selection-start-line="328" selection-start-column="4" selection-end-line="339" selection-end-column="21" />
+        <state relative-caret-position="5319">
+          <caret line="690" column="31" selection-start-line="690" selection-start-column="31" selection-end-line="690" selection-end-column="31" />
           <folding>
             <element signature="e#19#29#0" expanded="true" />
           </folding>
