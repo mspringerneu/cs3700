@@ -9,6 +9,9 @@ import json
 import math
 import re
 import os
+import StringIO
+import gzip
+import zlib
 from collections import deque
 from urlparse import urlparse
 from HTMLParser import HTMLParser
@@ -83,7 +86,7 @@ hashCode = 256
 
 # timeout variable
 timeout = 0.3
-
+timer = 0
 
 ########################
 ##  FAKEBOOK COOKIES  ##
@@ -166,9 +169,11 @@ class WebCrawler:
         for i in range(dbCount):
             self.databases.append(Database(i, (i / float(dbCount))))
         self.secretFlags = []
+        self.pagesParsed = 0
 
     # returns true if the database contains the given profile id
     def crawl(self):
+        global timer
         # if there are still unvisited profile ids, continue crawling
         while len(self.frontier) > 0 and len(self.secretFlags) < 5:
             profileId = self.frontier[0]
@@ -176,9 +181,9 @@ class WebCrawler:
             profileURL = currentUrl = domain + home + str(profileId) + "/"
             friendsURL = currentUrl = domain + home + str(profileId) + "/friends/1/"
 
-            print profileURL
+            #print profileURL
             profilePage = self.GET(currentUrl, True)
-            parsedProfilePage = self.parseHTML(profilePage)
+            parsedProfilePage = self.parseHTML(profilePage['data'])
 
             # scan all of the user's 'friends' pages
             scanningFriends = True
@@ -186,7 +191,7 @@ class WebCrawler:
                 status = True
                 print friendsURL
                 friendsPage = self.GET(friendsURL, True)
-                parsedFriendsPage = self.parseHTML(friendsPage)
+                parsedFriendsPage = self.parseHTML(friendsPage['data'])
                 if len(parsedFriendsPage['nextURL']) > 0:
                     friendsURL = domain + parsedFriendsPage['nextURL']
                 else:
@@ -202,8 +207,23 @@ class WebCrawler:
             self.frontier.popleft()
 
         # crawl has finished
+        print "********************************"
+        print "**                            **"
+        print "**        SECRET FLAGS        **"
+        print "**                            **"
+        print "********************************"
         for i in self.secretFlags:
-            print i
+            print "Secret flag: " + i
+        print "********************************"
+        print "**                            **"
+        print "**        SECRET FLAGS        **"
+        print "**                            **"
+        print "********************************"
+        print "Pages Parsed: " + str(self.pagesParsed)
+        executionTimer = time.time() - timer
+        mins = math.floor(executionTimer / 60)
+        secs = executionTimer % 60
+        print "Execution time: " + str(mins) + "min, " + str(secs) + "secs"
         sys.exit(0)
 
     # checks an array of profile ids, adding the unvisited ones to the frontier
@@ -211,35 +231,84 @@ class WebCrawler:
         for i in profileIds:
             self.handleProfileId(i)
 
+    def inFrontier(self, profileId):
+        inFrontier = False
+        for i in self.frontier:
+            if i == profileId:
+                inFrontier = True
+        return inFrontier
+
     def markVisited(self, profileId):
         hashedID = self.hashId(profileId)
-        print "Hashed ID for profile ID " + str(profileId) + ": " + str(hashedID)
-        db = self.getDatabase(hashedID)
-        print "Storing profile ID " + str(profileId) + " in database with ID " + str(db.id)
-        db.markVisited(profileId)
+        #print "Hashed ID for profile ID " + str(profileId) + ": " + str(hashedID)
+        dbId = self.getDatabase(hashedID)
+        #print "Storing profile ID " + str(profileId) + " in database with ID " + str(dbId)
+        inserted = self.databases[dbId].markVisited(profileId)
+        assert inserted == True
 
     # evaluate a profile id.  If it has not been visited, add it to the frontier, otherwise do nothing
     def handleProfileId(self, profileId):
         hashedID = self.hashId(profileId)
-        print "Hashed ID for " + str(profileId) + ": " + str(hashedID)
-        db = self.getDatabase(hashedID)
-        print "Checking database with ID " + str(db.id)
-        if db.hasVisited(hashedID):
-            print "Profile ID " + str(profileId) + " already visited.  Ignoring..."
-        else:
-            print "Profile ID " + str(profileId) + " has not been visited.  Expanding the frontier..."
+        # print "Hashed ID for " + str(profileId) + ": " + str(hashedID)
+        dbId = self.getDatabase(hashedID)
+        # print "Checking database with ID " + str(db.id)
+        if (not self.databases[dbId].hasVisited(profileId)) and (not self.inFrontier(profileId)):
             self.frontier.append(profileId)
+        """
+        if self.databases[dbId].hasVisited(profileId):
+            # print "Profile ID " + str(profileId) + " already visited.  Ignoring..."
+            # sys.exit(1)
+        elif self.inFrontier(profileId):
+            # print "Profile ID " + str(profileId) + " is already in the frontier.  Ignoring..."
+        else:
+            #print "Profile ID " + str(profileId) + " has not been visited.  Expanding the frontier..."
+            self.frontier.append(profileId)
+        """
 
     # handle various HTTP status codes
     def getHTTPStatusCode(self, header):
         status = re.search("HTTP/1.1 (.*)\r\n", header)
         if not status == None:
             status = re.split(' ', status.group(1))[0]
-            print "HTTP status code: " + status
+            #print "HTTP status code: " + status
             return int(status)
         else:
-            print "HTTP status code could not be parsed. Retrying HTTP request..."
+            #print "HTTP status code could not be parsed. Retrying HTTP request..."
             return -1
+
+    # unzips gzipped data
+    def unzip(self, response):
+        global CRLF
+        split = re.split(CRLF, response, 1)
+        header = split[0]
+        data = split[1]
+
+        #print '********'
+        #print "Header: " + header
+        #print '********'
+        #print "Data: " + data
+        #print '********'
+
+        encoding = re.search("Content-Encoding: (.*)\r\n", header)
+        length = re.search("Content-Length: (.*)\r\n", header)
+        if (not encoding == None) and (not length == None):
+            encoding = re.split(' ', encoding.group(1))[0]
+            length = int(length.group(1))
+
+            if encoding == 'gzip':
+                #print "Response received with 'gzip' encoding and length " + str(length) + ".  Decoding..."
+                stream = StringIO.StringIO(data)
+                gzipped = gzip.GzipFile(fileobj=stream)
+                unzipped = gzipped.read()
+                #print "Unzipped: " + unzipped
+
+                return {"header": header, "data": unzipped}
+            else:
+                #print "Response received with unknown encoding.  Exiting..."
+                sys.exit(2)
+        else:
+            #print "No encoding detected.  Proceeding..."
+            return {"header": header, "data": data}
 
     # return the fakebook url for a given profile id
     def generateURL(self, profileId):
@@ -255,18 +324,18 @@ class WebCrawler:
 
     # return the id of the database a hashedId should use
     def getDatabase(self, hashedId):
-        dbId = math.ceil(hashedId / 1/ float(self.dbCount)) % self.dbCount
-        for i in self.databases:
-            if i.id == dbId:
-                return i
+        return int(math.ceil(hashedId / (1 / float(self.dbCount))) % self.dbCount)
 
     # return the parsed HTML for a given URL
     def parseHTML(self, html):
         # parse page HTML, return in format {"ids": [array], "s_flag": string (optional)}
         parsed = self.parser.crawl(html)
+        self.pagesParsed = self.pagesParsed + 1
         self.parser.reset()
         # if the page contained a secret_flag
         if len(parsed['s_flag']) > 0:
+            print "Located secret_flag: " + parsed['s_flag']
+            sys.exit(5)
             self.secretFlags.append(parsed['s_flag'])
         return parsed
 
@@ -288,63 +357,78 @@ class WebCrawler:
 
         timer = time.time()
 
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        """
-        ***********************************************************************************
-        * Note that the connect() operation is subject to the timeout setting,
-        * and in general it is recommended to call settimeout() before calling connect()
-        * or pass a timeout parameter to create_connection().
-        * The system network stack may return a connection timeout error of its own
-        * regardless of any Python socket timeout setting.
-        ***********************************************************************************
-        """
-        s.settimeout(0.30)
-        """
-        **************************************************************************************
-        * Avoid socket.error: [Errno 98] Address already in use exception
-        * The SO_REUSEADDR flag tells the kernel to reuse a local socket in TIME_WAIT state,
-        * without waiting for its natural timeout to expire.
-        **************************************************************************************
-        """
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        # s.setblocking(0)
-        s.connect((HOST, PORT))
+
 
         if cookies:
             sendMsg = ('GET %s HTTP/1.1%s'
                        'Host: fring.ccs.neu.edu%s'
                        'Connection: Close%s'
-                       'Cookie: csrftoken=%s; sessionid=%s%s' % (path, CR, CR, CR, csrfToken, sessionIdToken, CRLF))
+                       'Accept-Encoding: gzip%s'
+                       'Cookie: csrftoken=%s; sessionid=%s%s' % (path, CR, CR, CR, CR, csrfToken, sessionIdToken, CRLF))
         else:
             sendMsg = ('GET %s HTTP/1.1%s'
                        'Host: fring.ccs.neu.edu%s'
-                       'Connection: Close%s' % (path, CR, CR, CRLF))
+                       'Accept-Encoding: gzip%s'
+                       'Connection: Close%s' % (path, CR, CR, CR, CRLF))
 
-        print sendMsg
+        #print sendMsg
 
         corrupt = True
+        response = ''
+        header = ''
         data = ''
+
         while corrupt:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            """
+            ***********************************************************************************
+            * Note that the connect() operation is subject to the timeout setting,
+            * and in general it is recommended to call settimeout() before calling connect()
+            * or pass a timeout parameter to create_connection().
+            * The system network stack may return a connection timeout error of its own
+            * regardless of any Python socket timeout setting.
+            ***********************************************************************************
+            """
+            #s.settimeout(0.50)
+            """
+            **************************************************************************************
+            * Avoid socket.error: [Errno 98] Address already in use exception
+            * The SO_REUSEADDR flag tells the kernel to reuse a local socket in TIME_WAIT state,
+            * without waiting for its natural timeout to expire.
+            **************************************************************************************
+            """
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            # s.setblocking(0)
+            s.connect((HOST, PORT))
             s.send(sendMsg)
-            data = (s.recv(1000000))
-            print data
-            statusCode = self.getHTTPStatusCode(data)
+            response = (s.recv(1000000))
+
+            statusCode = self.getHTTPStatusCode(response)
             if statusCode == 200:
+                data = self.unzip(response)
+                #print data
                 corrupt = False
+                s.shutdown(1)
+                s.close()
             elif statusCode == 403:
                 print "HTTP/1.1 403 Forbidden Error, webcrawler terminating..."
+                s.shutdown(1)
+                s.close()
                 sys.exit(1)
             elif statusCode == 404:
                 print "HTTP/1.1 404 Page Not Found Error, webcrawler terminating..."
+                s.shutdown(1)
+                s.close()
                 sys.exit(1)
             else:
+                s.shutdown(1)
+                s.close()
                 continue
         # s.send(post)
         # data2 = (s.recv(1000000))
         # print data2
         # https://docs.python.org/2/howto/sockets.html#disconnecting
-        s.shutdown(1)
-        s.close()
+
         return data
         # print 'Received', repr(data)
 
@@ -362,42 +446,56 @@ class WebCrawler:
             path = "/"
         HOST = url.netloc  # The remote host
         PORT = 80  # The same port as used by the server
-        # create an INET, STREAMing socket
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        """
-        ***********************************************************************************
-        * Note that the connect() operation is subject to the timeout setting,
-        * and in general it is recommended to call settimeout() before calling connect()
-        * or pass a timeout parameter to create_connection().
-        * The system network stack may return a connection timeout error of its own
-        * regardless of any Python socket timeout setting.
-        ***********************************************************************************
-        """
-        s.settimeout(0.30)
-        """
-        **************************************************************************************
-        * Avoid socket.error: [Errno 98] Address already in use exception
-        * The SO_REUSEADDR flag tells the kernel to reuse a local socket in TIME_WAIT state,
-        * without waiting for its natural timeout to expire.
-        **************************************************************************************
-        """
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        # s.setblocking(0)
-        s.connect((HOST, PORT))
+
         corrupt = True
+        response = ''
+        header = ''
         data = ''
+
         while corrupt:
+            # create an INET, STREAMing socket
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            """
+            ***********************************************************************************
+            * Note that the connect() operation is subject to the timeout setting,
+            * and in general it is recommended to call settimeout() before calling connect()
+            * or pass a timeout parameter to create_connection().
+            * The system network stack may return a connection timeout error of its own
+            * regardless of any Python socket timeout setting.
+            ***********************************************************************************
+            """
+            s.settimeout(0.50)
+            """
+            **************************************************************************************
+            * Avoid socket.error: [Errno 98] Address already in use exception
+            * The SO_REUSEADDR flag tells the kernel to reuse a local socket in TIME_WAIT state,
+            * without waiting for its natural timeout to expire.
+            **************************************************************************************
+            """
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            # s.setblocking(0)
+            s.connect((HOST, PORT))
             s.send(msg)
-            data = (s.recv(1000000))
-            print data
-            statusCode = self.getHTTPStatusCode(data)
+            response = (s.recv(1000000))
+
+            #print header
+            statusCode = self.getHTTPStatusCode(response)
             if statusCode == 302:
+                data = self.unzip(response)
+
+                #print data
                 corrupt = False
+                s.shutdown(1)
+                s.close()
             elif statusCode == 403:
                 print "HTTP/1.1 403 Forbidden Error, webcrawler terminating..."
+                s.shutdown(1)
+                s.close()
                 sys.exit(1)
             elif statusCode == 404:
                 print "HTTP/1.1 404 Page Not Found Error, webcrawler terminating..."
+                s.shutdown(1)
+                s.close()
                 sys.exit(1)
             else:
                 continue
@@ -405,19 +503,20 @@ class WebCrawler:
         # data2 = (s.recv(1000000))
         # print data2
         # https://docs.python.org/2/howto/sockets.html#disconnecting
-        s.shutdown(1)
-        s.close()
+
         # print 'Received', repr(data)
         return data
 
     def extractCSRF(self, data):
         global csrfToken
+        #print "Extracting CSRF token from :" + data
         token = re.search("csrftoken=(.*); ex", data)
         #token = re.split(';', token.group(0))[0]
         csrfToken = token.group(1)
 
     def extractSessionId(self, data):
         global sessionIdToken
+        #print "Extracting session ID token from :" + data
         token = re.search("sessionid=(.*); ex", data)
         #token = re.split(';', token.group(0))[0]
         sessionIdToken = token.group(1)
@@ -433,11 +532,11 @@ class WebCrawler:
 
         url = domain + login
 
-        print "URL: " + url
+        #print "URL: " + url
 
-        data = self.GET(url, False)
-        self.extractCSRF(data)
-        self.extractSessionId(data)
+        response = self.GET(url, False)
+        self.extractCSRF(response['header'])
+        self.extractSessionId(response['header'])
 
         print "CSRF Token: " + csrfToken
         print "Session ID Token: " + sessionIdToken
@@ -448,27 +547,29 @@ class WebCrawler:
                      'Cookie: csrftoken=%s; sessionid=%s%s'
                      'Content-Type: application/x-www-form-urlencoded%s'
                      'Content-Length: 105%s'
+                     'Accept-Encoding: gzip%s'
                      'username=000057168&password=YG99AKBL&csrfmiddlewaretoken=%s&next=/fakebook/%s' % (
-                     CR, CR, CR, csrfToken, sessionIdToken, CR, CR, CRLF, csrfToken, CRLF))
+                     CR, CR, CR, csrfToken, sessionIdToken, CR, CR, CR, CRLF, csrfToken, CRLF))
 
-        print "POST message: " + loginPost
+        #print "POST message: " + loginPost
 
-        data = self.POST(loginPost, url, False)
-        self.extractSessionId(data)
+        response = self.POST(loginPost, url, False)
+        self.extractSessionId(response['header'])
         print "Authenticated Session ID Token: " + sessionIdToken
 
-        data = self.GET(domain + home, True)
-        return data
+        response = self.GET(domain + home, True)
+        return response
 
     def initializeCrawler(self):
         homepage = self.login()
-        crawled_homepage = self.parser.crawl(homepage)
+        crawled_homepage = self.parser.crawl(homepage['data'])
+        self.pagesParsed = self.pagesParsed + 1
         if len(crawled_homepage['s_flag']) > 0:
             self.secretFlags.append(crawled_homepage['s_flag'])
         if crawled_homepage['ids']:
             for i in crawled_homepage['ids']:
                 self.frontier.append(i)
-        print self.frontier
+        print "Initial frontier: " + str(self.frontier)
 
 
 ######################################################################
@@ -498,8 +599,8 @@ class Database:
     # method that returns true if the database contains the given profile id
     def hasVisited(self, profileId):
         containsId = False
-        for i in range(len(self.visited)):
-            if self.visited[i] == profileId:
+        for i in self.visited:
+            if i == profileId:
                 containsId = True
                 break
         return containsId
@@ -507,13 +608,19 @@ class Database:
     # inserts a 'visited' profile id in the visited array, returns True if successfully inserted
     def markVisited(self, profileId):
         inserted = False
+        #print "Stored profile IDs: " + str(self.visited)
+        #print "Database " + str(self.id) + " storing profile ID " + str(profileId)
         for i in range(len(self.visited)):
-            if self.visited[i] > profileId:
+            if int(self.visited[i]) > int(profileId):
+                # print str(self.visited[i])
                 self.visited.insert(i, profileId)
                 inserted = True
                 break
+        if not inserted:
+            self.visited.append(profileId)
+            inserted = True
+        #print "Stored profile IDs: " + str(self.visited)
         return inserted
-
 
 ######################################################################
 #   CLASS: CRAWLERHTMLPARSER FROM HTMLPARSER
@@ -551,19 +658,25 @@ class CrawlerHTMLParser(HTMLParser):
                 for attr, value in attrs:
                     if attr == 'href':
                         id = re.split('/', value)[2]
-                        print id
+                        #print id
                         #assert len(id) == 9 or len(id) == 8
                         self.ids.append(int(id))
             elif self.scanNextURL:
                 for attr, value in attrs:
                     if attr == 'href':
                         self.nextURL = value
+        """
         elif tag == 'h2':
             for attr, value in attrs:
                 if (attr, value) == ('class', 'secret_flag'):
                     self.scanSFs = True
-        elif tag == 'html':
-            self.scanHeader = False
+                    self.flag = str(tag) + str(attrs)
+        elif tag == 'h3':
+            for attr, value in attrs:
+                if (attr, value) == ('class', 'secret_flag'):
+                    self.scanSFs = True
+                    self.flag = str(tag) + str(attrs)
+        """
         # print "Encountered a start tag:", tag
 
     # Override
@@ -573,17 +686,24 @@ class CrawlerHTMLParser(HTMLParser):
                 self.scanIds = False
             elif self.scanNextURL:
                 self.scanNextURL = False
+        """
         elif tag == 'h2':
             if self.scanSFs:
+                self.flag = self.flag + str(tag)
                 self.scanSFs = False
+        elif tag == 'h3':
+            if self.scanSFs:
+                self.flag = self.flag + str(tag)
+                self.scanSFs = False
+        """
         # print "Encountered an end tag :", tag
 
     # Override
     def handle_data(self, data):
-        if self.scanHeader:
-            self.header = data
-        elif self.scanSFs:
-            self.flag = data
+        if "FLAG:" in data:
+            print "Encountered secret_flag: " + data
+            sys.exit(5)
+            self.flag = data[6:]
         elif self.scanNextURL:
             if data == 'next':
                 self.scanNextURL = False
@@ -596,15 +716,11 @@ class CrawlerHTMLParser(HTMLParser):
         self.nextURL = ''
         self.ids = []
         self.flag = ''
-        self.scanHeader = True
         self.scanNextURL = False
         self.hasNext = False
         self.scanIds = False
-        self.scanSFs = False
+        #self.scanSFs = False
         HTMLParser.reset(self)
-
-    def hasSecretFlag(self):
-        return len(self.flag) > 0
 
     def crawl(self, html):
         # process HTML
@@ -613,7 +729,6 @@ class CrawlerHTMLParser(HTMLParser):
             self.nextURL = ''
 
         retVal = {
-                    'header': self.header,
                     'ids': self.ids,
                     's_flag': self.flag,
                     'nextURL': self.nextURL
@@ -632,15 +747,18 @@ def main():
 
     global username
     global password
+    global timer
 
     #initialize username and password from command line arguments
     print sys.argv
     if not len(sys.argv) == 3:
         print "fakebook webcrawler requires a username and a password, exiting..."
-        sys.exit(1)
+        sys.exit(-1)
     else:
         username = sys.argv[1]
         password = sys.argv[2]
+
+    timer = time.time()
 
     # initialize crawler
     crawler = WebCrawler(10)
