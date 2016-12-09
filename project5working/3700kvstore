@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import sys
 import socket
@@ -6,17 +6,17 @@ import select
 import time
 import json
 import random
-from enum import Enum
 from collections import deque
 
 
 class ReplicaState:
-    def __init__(self):
-        self.id = id
+    def __init__(self, index):
+        self.index = index
         self.term = 0
         self.votes = 1
         self.pPending = 0
         self.pCommitted = 0
+        self.status = "ok"
 
     def nextTerm(self):
         self.term += 1
@@ -28,9 +28,38 @@ class ReplicaState:
             self.votes = 1
 
 
-class AppendEntry:
+class GetRequest:
     def __init__(self, msg, term):
-        self.status = 'pending'
+        self.source = msg['src']
+        self.acked_nodes = []
+        self.num_acked_nodes = 1
+        self.quorum = False
+        self.key = msg['key']
+        self.value = ""
+        self.messageId = msg['MID']
+        self.term = term
+
+    def quorumMet(self, quorum):
+        if quorum > self.num_acked_nodes:
+            self.quorum = False
+        else:
+            self.quorum = True
+        return self.quorum
+
+    def ack(self, replica_id):
+        if replica_id not in self.acked_nodes:
+            self.acked_nodes.append(replica_id)
+            self.num_acked_nodes += 1
+
+    def setValue(self, val):
+        self.value = val
+
+    def getEntry(self):
+        return {"MID": self.messageId, "key": self.key}
+
+
+class PutRequest:
+    def __init__(self, msg, term):
         self.source = msg['src']
         self.acked_nodes = []
         self.num_acked_nodes = 1
@@ -52,90 +81,147 @@ class AppendEntry:
             self.acked_nodes.append(replica_id)
             self.num_acked_nodes += 1
 
+    def getLogEntry(self):
+        return {'key': self.key, 'value': {'value': self.value, 'term': self.term}}
+
 
 class RaftNode:
     def __init__(self, my_id, other_node_ids):
         self.my_id = my_id
-        self.my_state = ReplicaState()
+        self.my_state = ReplicaState("myState")
         self.my_socket = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
         self.my_socket.connect(self.my_id)
         self.raft_size = len(other_node_ids) + 1
         self.quorum = (self.raft_size / 2) + 1
-        self.other_node_ids = other_node_ids
-        self.other_node_states = dict()
-        for replicaId in other_node_ids:
-            self.other_node_states.update(replicaId, ReplicaState())
+        self.other_node_ids = []
+        self.other_node_states_dict = dict()
+        self.other_node_states = []
+        for i in range(len(other_node_ids)):
+            node_id = other_node_ids[i]
+            self.other_node_ids.append(other_node_ids[i])
+            state = ReplicaState(i)
+            self.other_node_states.append(state)
+            node_state = {node_id: i}
+            self.other_node_states_dict.update(node_state)
+        self.getRequests = deque()
+        self.putRequests = deque()
+        self.pendingRequests = deque()
         self.requestLog = deque()
         self.dictionary = dict()
-        self.node_type = State.follower.value
+        self.node_type = "follower"
         self.vote_tally = 0
         self.appendResponses = 0
-        self.currentLeader = ""
+        self.currentLeader = "FFFF"
         self.electionTimeout = 0.15
         self.resetElectionTimeout()
+        self.sendMessages = []
+
+    ##############################
+    ##                          ##
+    ##     ELECTION HANDLING    ##
+    ##                          ##
+    ##############################
 
     def resetElectionTimeout(self):
         self.electionTimeout = float((random.randrange(150, 300)) / 1000)
 
-    def castVote(self, candidate, dest):
+    def castVote(self, candidate, dst):
         if self.my_state.votes > 0:
-            if dest == "FFFF":
+            if dst == "FFFF":
                 for replica_id in self.other_node_ids:
-                    vote = json.loads(
-                        {'src': self.my_id, 'dest': replica_id, 'type': 'vote', 'term': self.my_state.term,
-                         'candidate': candidate})
-                    self.my_socket.send(vote)
-                    self.my_state.votes = 0
+                    vote = {'src': self.my_id, 'dst': replica_id, 'type': 'vote', 'leader': self.currentLeader,  'term': self.my_state.term,
+                         'candidate': candidate}
+                    self.sendMessages.append(json.dumps(vote))
+                self.my_state.votes = 0
             else:
-                vote = json.loads({'src': self.my_id, 'dest': dest, 'type': 'vote', 'term': self.my_state.term,
-                                   'candidate': candidate})
-                self.my_socket.send(vote)
+                vote = {'src': self.my_id, 'dst': dst, 'type': 'vote', 'leader': self.currentLeader, 'term': self.my_state.term,
+                                   'candidate': candidate}
+                self.sendMessages.append(json.dumps(vote))
                 self.my_state.votes = 0
 
     def selfElect(self):
         self.resetElectionTimeout()
-        self.node_type = State.candidate.value
+        self.node_type = "candidate"
+        self.currentLeader = 'FFFF'
         self.my_state.nextTerm()
+        # votes received
         self.vote_tally = 1
-        self.my_state.votes = 0
         self.castVote(self.my_id, "FFFF")
 
     def handleVote(self, msg):
         term = msg['term']
         candidate = msg['candidate']
-        if self.node_type == State.follower.value:
+        if self.node_type == "follower":
             if term > self.my_state.term:
                 self.my_state.toTerm(term)
                 self.castVote(candidate, candidate)
             elif term == self.my_state.term and self.my_state.votes > 0:
                 self.castVote(candidate, candidate)
-        elif self.node_type == State.candidate.value:
+        elif self.node_type == "candidate":
             if term > self.my_state.term:
-                self.node_type = State.follower.value
+                self.node_type = "follower"
                 self.my_state.toTerm(term)
                 self.castVote(candidate, candidate)
             elif term == self.my_state.term and candidate == self.my_id:
                 self.vote_tally += 1
-                if self.vote_tally == self.quorum:
+                if self.vote_tally >= self.quorum:
                     self.becomeLeader()
 
     def becomeLeader(self):
-        self.node_type = State.leader.value
+        self.node_type = "leader"
         self.vote_tally = 0
         self.currentLeader = self.my_id
-        self.appendResponses = 0
+
+    ##############################
+    ##                          ##
+    ##     GET/PUT REQUESTS     ##
+    ##                          ##
+    ##############################
+
+    def handleGet(self, msg):
+
+        if msg['key']:
+            if self.node_type == "leader":
+                request = GetRequest(msg, self.my_state.term)
+                if msg['key'] in self.dictionary.keys():
+                    request.setValue(self.dictionary.get(msg['key']))
+
+                # if there is only one node in the raft
+                if request.quorumMet(self.quorum):
+                    self.confirmMessage(request, "get")
+                else:
+                    self.getRequests.append(request)
+            else:
+                self.failMessage(msg)
+        else:
+            self.failMessage(msg)
+
+    def confirmMessage(self, request, reqType):
+        if reqType == 'get':
+            self.my_socket.send(
+                json.dumps({"src": self.my_id, "dst": request.src, "leader": self.currentLeader, "type": "ok",
+                            "MID": request.messageId,
+                            "value": request.value}))
+        elif reqType == 'put':
+            self.my_socket.send(
+                json.dumps({"src": self.my_id, "dst": request.src, "leader": self.currentLeader, "type": "ok",
+                            "MID": request.messageId}))
 
     def handlePut(self, msg):
-        global currentLeader
-        global requestLog
-        global my_state
         # todo: check fail/ok conditions
         if msg['key'] and msg['value']:
-            if self.node_type == State.leader.value:
-                entry = AppendEntry(msg, self.my_state.term)
-                entry.quorumMet(self.quorum)
+            if self.node_type == "leader":
+                request = PutRequest(msg, self.my_state.term)
+                entry = request.getLogEntry()
                 self.requestLog.append(entry)
                 self.my_state.pPending += 1
+
+                # if there is only one node in the raft
+                if request.quorumMet(self.quorum):
+                    self.confirmMessage(request, "put")
+                    self.my_state.pCommitted += 1
+                else:
+                    self.putRequests.append(request)
 
             else:
                 self.failMessage(msg)
@@ -143,149 +229,174 @@ class RaftNode:
             self.failMessage(msg)
 
     def failMessage(self, msg):
+        # todo: might have to change else case
         response = {}
         # fail message
-        if self.node_type == State.leader.value:
+        if self.node_type == "leader":
             self.my_socket.send(
                 json.dumps({"src": self.my_id, "dst": msg['src'], "leader": self.currentLeader, "type": "fail",
                             "MID": msg['MID']}))
         # redirect message
-        elif msg['dest'] == self.my_id:
+        elif msg['dst'] == self.my_id:
             self.my_socket.send(
                 json.dumps({"src": self.my_id, "dst": msg['src'], "leader": self.currentLeader, "type": "redirect",
                             "MID": msg['MID']}))
 
-    def handleGet(self, msg):
-        global currentLeader
-        response = {}
-        value = ""
-        if msg['key']:
-            if state == State.leader.value:
-                if msg['key'] in dictionary.keys():
-                    value = dictionary.get(msg['key'])
-                    self.my_socket.send(
-                        json.dumps({"src": msg['dest'], "dst": msg['src'], "leader": currentLeader, "type": "ok",
-                                    "MID": msg['MID'],
-                                    "value": value}))
-                else:
-                    self.my_socket.send(
-                        json.dumps({"src": msg['dest'], "dst": msg['src'], "leader": currentLeader, "type": "ok",
-                                    "MID": msg['MID'],
-                                    "value": value}))
-            else:
-                self.failMessage(msg)
-        else:
-            self.failMessage(msg)
-
     def validMessage(self, msg):
-        return msg['src'] and msg['dest'] and msg['type'] and msg['leader']
+        return msg['src'] and msg['dst'] and msg['type'] and msg['leader']
 
     def writePut(key, value):
         return False
 
-    def handleHeartbeat(self, msg):
-        if msg['term'] and msg['state'] and msg['appendEntries']:
-            if self.node_type == State.leader.value:
+    ########################
+    ##                    ##
+    ##     HEARTBEATS     ##
+    ##                    ##
+    ########################
 
-            elif self.node_type == State.follower.value:
-                if msg['term'] > self.my_state.term:
-                    self.my_state.toTerm(msg['term'])
-                    self.currentLeader = msg['src']
-                    self.failHeartbeat()
-                elif msg['term'] == self.my_state.term:
-                    if not msg['src'] == self.currentLeader:
-                        self.currentLeader = msg['src']
-                    msgPend = msg['appendEntries']['pPending']
-                    msgComm = msg['appendEntries']['pCommitted']
-                    if msgPend == self.my_state.pPending and msgComm == self.my_state.pCommitted:
-                        for entry in msg['appendEntries']['entries']:
-                            self.requestLog.append(entry)
-            if msg['term'] > currentTerm:
-                updateTerm(currentTerm, msg['src'])
-            elif state == State.follower.value:
-                if msg['term'] == currentTerm and msg['src'] == currentLeader:
-                    resetElectionTimeout()
-                if msg['state'] == 'ready' and len(msg['appendEntries']):
-                    uncommitted = msg['appendEntries']
-                elif msg['state'] == 'commit':
-                    dictionary.update(uncommitted)
+    def handleHeartbeat(self, msg):
+        response = {}
+        getResponse = {}
+        if msg['get']:
+            messageId = msg['get']['MID']
+            if self.node_type == "follower":
+                key = msg['get']['key']
+                if key in self.dictionary.keys:
+                    getResponse = {'MID': messageId, 'key': key, 'value': self.dictionary.get(key)}
+                else:
+                    getResponse = {'MID': messageId, 'key': key, 'value': ''}
+            elif self.node_type == "leader":
+                val = msg['get']['value']
+                for req in self.getRequests:
+                    if req.messageId == messageId and req.val == val:
+                        req.ack(msg['src'])
+                        if req.quorumMet(self.quorum):
+                            self.confirmMessage(req, 'get')
+                            self.getRequests.remove(req)
+                        break
+
+        if msg['term'] and msg['appendEntries']:
+            if msg['term'] > self.my_state.term:
+                self.my_state.toTerm(msg['term'])
+                self.node_type = "follower"
+                self.currentLeader = msg['leader']
+                message = {'src': self.my_id, 'dst': msg['src'], 'leader': self.currentLeader,
+                           'term': self.my_state.term, 'type': 'hearbeat',
+                           'appendEntries': {'status': 'fail', 'pPending': self.my_state.pPending,
+                                             'pCommitted': self.my_state.pCommitted, "entries": {}}}
+                self.sendMessages.append(json.dumps(message))
+                self.failAllRequests()
+            elif msg['term'] == self.my_state.term:
+                if self.node_type == "leader":
+                    pPend = msg['appendEntries']['pPending']
+                    pComm = msg['appendEntries']['pCommitted']
+                    node_state = self.other_node_states[self.other_node_states_dict.get(msg['src'])]
+                    node_state.pPending = pPend
+                    node_state.pCommitted = pComm
+                    if msg['appendEntries']['status'] == "ok":
+                        node_state.status = "ok"
+                        if pPend == self.my_state.pPending and pComm == self.my_state.pCommitted:
+                            if pPend - pComm > 0:
+                                for i in range(pPend - pComm):
+                                    self.dictionary.update(self.requestLog[i + pComm]['key'], self.requestLog[i + pComm]['value'])
+                                self.my_state.pCommitted = pPend
+                    elif msg['appendEntries']['status'] == "fail":
+                        node_state.status = "fail"
+                elif self.node_type == "follower":
+                    pPend = msg['appendEntries']['pPending']
+                    pComm = msg['appendEntries']['pCommitted']
+                    msgEntries = msg['appendEntries']['pCommitted']
+                    if msg['appendEntries']['status'] == "ok":
+                        if self.my_state.pCommitted == pComm and self.my_state.pPending < pPend:
+                            for i in range(pPend - self.my_state.pPending):
+                                self.requestLog.append(msgEntries[i])
+                            self.my_state.Pending = pPend
+                            message = {'src': self.my_id, 'dst': msg['src'], 'leader': self.currentLeader,
+                                       'term': self.my_state.term, 'type': 'hearbeat',
+                                       'appendEntries': {'status': 'fail', 'pPending': self.my_state.pPending,
+                                                         'pCommitted': self.my_state.pCommitted, "entries": {}}}
+                            self.sendMessages.append(json.dumps(message))
+                        elif self.my_state.pPending == pPend and self.my_state.pCommitted < pComm:
+                            for i in range(pComm - self.my_state.pCommitted):
+                                self.dictionary.update(self.requestLog[i + self.my_state.pCommitted]['key'],
+                                                       self.requestLog[i + self.my_state.pCommitted]['value'])
+                            self.my_state.pCommitted = pComm
+                            message = {'src': self.my_id, 'dst': msg['src'], 'leader': self.currentLeader,
+                                       'term': self.my_state.term, 'type': 'hearbeat',
+                                       'appendEntries': {'status': 'fail', 'pPending': self.my_state.pPending,
+                                                         'pCommitted': self.my_state.pCommitted, "entries": {}}}
+                            self.sendMessages.append(json.dumps(message))
+                        else:
+                            message = {'src': self.my_id, 'dst': msg['src'], 'leader': self.currentLeader,
+                                       'term': self.my_state.term, 'type': 'hearbeat',
+                                       'appendEntries': {'status': 'fail', 'pPending': self.my_state.pPending,
+                                                         'pCommitted': self.my_state.pCommitted, "entries": {}}}
+                            self.sendMessages.append(json.dumps(message))
+                    elif msg['appendEntries']['status'] == "override":
+                        entrySubArray = self.requestLog[:pComm]
+                        for i in range(pPend - self.my_state.pCommitted):
+                            entrySubArray.append(msgEntries[i])
+                        self.requestLog = entrySubArray
+                        for i in range(pComm - self.my_state.pCommitted):
+                            self.dictionary.update(self.requestLog[i + self.my_state.pCommitted]['key'],
+                                                   self.requestLog[i + self.my_state.pCommitted]['value'])
+                        self.my_state.pPending = pPend
+                        self.my_state.pCommitted = pComm
+                        message = {'src': self.my_id, 'dst': msg['src'], 'leader': self.currentLeader,
+                                   'term': self.my_state.term, 'type': 'hearbeat',
+                                   'appendEntries': {'status': 'ok', 'pPending': self.my_state.pPending,
+                                                     'pCommitted': self.my_state.pCommitted, "entries": {}}}
+                        self.sendMessages.append(json.dumps(message))
 
     def heartbeat(self):
         pPend = self.my_state.pPending
         pComm = self.my_state.pCommitted
-        entries = self.requestLog[pComm:pPend]
-        hbEntries = []
+        entries = []
+        getRequest = None
+        if len(self.getRequests) > 0:
+            getRequest = self.getRequests[0]
         message = {}
-        for i in range(len(entries)):
-            hbEntries.append({"key": entries[i].key, "value": entries[i].value})
-        for replica_id in self.other_node_ids:
-            message = {"src": self.my_id, "dst": replica_id, "leader": self.currentLeader, "type": "heartbeat",
-                       "term": self.my_state.term,
-                       "appendEntries": {"pPending": pPend, "pCommitted": pComm, "entries": hbEntries}}
+        for id in self.other_node_ids:
+            node_state = self.other_node_states[self.other_node_states_dict.get(id)]
+            node_pPend = node_state.pPending
+            node_pComm = node_state.pCommitted
+            if node_state.status == "ok":
+                entries = self.requestLog[node_pComm:pPend]
+                if getRequest is not None:
+                    message = {"src": self.my_id, "dst": id, "leader": self.currentLeader, "type": "heartbeat",
+                               "term": self.my_state.term,
+                               "appendEntries": {
+                                   "status": "ok", "pPending": pPend, "pCommitted": pComm, "entries": entries},
+                               "get": getRequest.getEntry()}
+                else:
+                    message = {"src": self.my_id, "dst": id, "leader": self.currentLeader, "type": "heartbeat",
+                               "term": self.my_state.term,
+                               "appendEntries": {
+                                   "status": "ok", "pPending": pPend, "pCommitted": pComm, "entries": entries}}
+            elif node_state.status == "fail":
+
+                entries = self.requestLog[node_pComm:pPend]
+                if getRequest is not None:
+                    message = {"src": self.my_id, "dst": id, "leader": self.currentLeader, "type": "heartbeat",
+                               "term": self.my_state.term,
+                               "appendEntries": {"status": "override", "pPending": pPend, "pCommitted": pComm,
+                                                 "entries": entries}, "get": getRequest.getEntry()}
+                else:
+                    message = {"src": self.my_id, "dst": id, "leader": self.currentLeader, "type": "heartbeat",
+                               "term": self.my_state.term,
+                               "appendEntries": {"status": "override", "pPending": pPend, "pCommitted": pComm,
+                                                 "entries": entries}}
+
+            self.sendMessages.append(json.dumps(message))
 
 
-# Your ID number
-my_id = sys.argv[1]
-
-# The ID numbers of all the other replicas
-replica_ids = sys.argv[2:]
-
-# number of replicas
-replica_count = len(replica_ids) + 1
-
-# majority
-quorum = (replica_count / 2) + 1
-
-# the state of this replica
-my_state = ReplicaState(my_id)
-
-# the states of other replicas
-replica_states = []
-for replica_id in replica_ids:
-    replica_states.append(ReplicaState(replica_id))
-
-# dictionary
-requestLog = deque()
-
-# uncommitted changes
-dictionary = dict()
-
-
-# is the node a leader (all nodes start as follower
-class State(Enum):
-    follower = 0
-    candidate = 1
-    leader = 2
-
-
-state = State.follower.value
-
-# what term are we in
-currentTerm = 0
-
-# how many votes you can cast (1 per election)
-votes = 1
-
-# how many votes have you received
-tally = 0
-
-# how many replicas have committed
-commits = 0
-
-# who is the leader
-currentLeader = ""
-
-this_node = RaftNode(my_id, replica_ids)
+this_node = RaftNode(sys.argv[1], sys.argv[2:])
 
 # Connect to the network. All messages to/from other replicas and clients will
 # occur over this socket
-sock = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
-sock.connect(this_node.my_id)
 
 timer = time.time()
 deltaTime = 0
-
-last = 0
 
 # timeouts
 electionTimeout = 0.15
@@ -293,19 +404,21 @@ heartbeatTimeout = 0.05
 
 
 def validMessage(msg):
-    return msg['src'] and msg['dest'] and msg['type'] and msg['leader']
+    return msg['src'] and msg['dst'] and msg['type'] and msg['leader']
 
 
 while True:
+    # logic for checking for election timeouts
     currentTime = time.time()
     deltaTime = currentTime - timer
     if deltaTime >= this_node.electionTimeout:
+        timer = currentTime
         this_node.selfElect()
 
-    ready = select.select([sock], [], [], heartbeatTimeout)[0]
+    ready = select.select([this_node.my_socket], [], [], heartbeatTimeout)[0]
 
-    if sock in ready:
-        msg_raw = sock.recv(32768)
+    if this_node.my_socket in ready:
+        msg_raw = this_node.my_socket.recv(32768)
 
         if len(msg_raw) == 0: continue
         msg = json.loads(msg_raw)
@@ -324,14 +437,19 @@ while True:
 
             elif msg['type'] == 'heartbeat':
                 this_node.handleHeartbeat()
-                print('%s received a NOOP from %s' % (msg['dst'], msg['src']))
         else:
             this_node.failMessage(msg)
 
-        if this_node.node_type == State.leader.value:
-            for id in replica_ids:
-                msg = {'src': my_id, 'dest': id, 'type': 'heartbeat', 'term': term}
+    else:
+        if this_node.node_type == "leader":
+            this_node.heartbeat()
 
+    while len(this_node.sendMessages) > 0:
+        for msg in this_node.sendMessages:
+            this_node.my_socket.send(msg)
+            this_node.sendMessages.remove(msg)
+
+    """
     clock = time.time()
     if clock - last > 2:
         # Send a no-op message to a random peer every two seconds, just for fun
@@ -340,3 +458,4 @@ while True:
         sock.send(json.dumps(msg))
         print('%s sending a NOOP to %s' % (msg['src'], msg['dst']))
         last = clock
+    """
