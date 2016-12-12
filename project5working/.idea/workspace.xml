@@ -23,8 +23,8 @@
       <file leaf-file-name="3700kvstore" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/3700kvstore">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="114">
-              <caret line="525" column="24" selection-start-line="525" selection-start-column="24" selection-end-line="525" selection-end-column="24" />
+            <state relative-caret-position="354">
+              <caret line="403" column="55" selection-start-line="403" selection-start-column="55" selection-end-line="403" selection-end-column="55" />
               <folding>
                 <element signature="e#23#33#0" expanded="true" />
               </folding>
@@ -341,8 +341,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/3700kvstore">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="114">
-          <caret line="525" column="24" selection-start-line="525" selection-start-column="24" selection-end-line="525" selection-end-column="24" />
+        <state relative-caret-position="354">
+          <caret line="403" column="55" selection-start-line="403" selection-start-column="55" selection-end-line="403" selection-end-column="55" />
           <folding>
             <element signature="e#23#33#0" expanded="true" />
           </folding>

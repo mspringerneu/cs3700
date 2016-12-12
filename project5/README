@@ -1,0 +1,17 @@
+*************************
+** HIGH-LEVEL APPROACH **
+*************************
+
+For this project we again chose to program in Python.  We took a class-based approach, where a Raft node would be a defined class that stores information about itself, and (when it is the leader), also maintains information about each of the follower nodes (committed and pending pointers, etc.).  We used select.select(), as well as hardcoded event timers to ensure that the election and heartbeat protocols were functioning properly.  For our get()/put() consensus, we had a specific class object for each request that stored the sender, message ID, key/value pair, term, and number of replicas that had acknowledged the request.  When a quorum is reached, the message is confirmed to the client, and when all of the replicas have acknowledged the request, it is permanently deleted.
+
+******************************
+** DIFFICULTIES ENCOUNTERED **
+******************************
+
+We had a lot of difficulty with this project.  We had a build that was functioning properly but was sending too many messages, but when we altered the timeout values, our delay then jumped above the acceptable values for the project.  In trying to alter the program in order to get these values in line, we ended up casuing the program to frequent trigger a redirect loop with the client, which skyrocketed the total message count.
+
+**********************
+** TESTING STRATEGY **
+**********************
+
+The majority of our testing for this project was done through the use of print statements that output desired information as the program was running.  We were able to turn off certain comments depending on the exact functionality that we were investigating (for instance, if we wanted to make sure the heartbeat protocol was working properly, we would turn off all printing from messages that did not originate from one of the Raft node replicas).  This was very helpful in locating/detecting both the problems that were occurring, and also what was causing them.
