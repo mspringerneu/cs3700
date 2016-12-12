@@ -9,6 +9,26 @@ import random
 from collections import deque
 
 
+######################################################################
+#   CLASS: REPLICASTATE
+#
+#       ARGUMENTS
+#
+#           index           - the index of the replica state(to be used by the ReplicaNode that stores it in an array)
+#
+#       ADDITIONAL STORED VARIABLES
+#
+#           term            - what term the ReplicaNode thinks it is in
+#           votes           - the number of votes the ReplicaNode can still cast this term
+#           pPending        - pointer to the where the next pending appendEntry should be placed in the log
+#           pCommitted      - pointer to the next pending entry in the log to be committed
+#           status          - status message to send in heartbeat responses - "ok" if synced with leader, "fail" if not
+#
+#       METHODS
+#
+#           nextTerm        - increment the term by 1 and set votes to 1
+#           parsePageHTML   - increment to the given term and set votes to 1
+#
 class ReplicaState:
     def __init__(self, index):
         self.index = index
@@ -28,65 +48,160 @@ class ReplicaState:
             self.votes = 1
 
 
+######################################################################
+#   CLASS: GETREQUEST
+#
+#       ARGUMENTS
+#
+#           msg             - JSON message from which to create the GetRequest
+#           term            - term in which the GetRequest was received
+#           quorum          - the number of responses that constitutes a quorum
+#
+#       ADDITIONAL STORED VARIABLES
+#
+#           source          - the source of the request
+#           acked_nodes     - array of the IDs of ReplicaNodes that have acked the request
+#           num_acked_nodes - the number of ReplicaNodes that have acked the request
+#           quorumMet       - whether or not the number of ReplicaNodes that acked the request constitutes a quorum
+#           key             - dictionary key
+#           value           - value of dictionary[key] to be returned to the client
+#           messageId       - message Id of the client's request
+#           term            - which term the request was made in
+#           confirmed       - whether or not a response has been sent to the client
+#
+#       METHODS
+#
+#           ack             - add the given replicaId to the array of ackedNodes, increment num_acked_nodes,
+#                             determine if a quorum has been met
+#           setValue        - set the request's value to the given value
+#           getEntry        - returns an entry for the request to be passed in the heartbeat
+#
 class GetRequest:
-    def __init__(self, msg, term):
+    def __init__(self, msg, term, quorum):
+        self.term = term
+        self.quorum = quorum
         self.source = str(msg['src'])
         self.acked_nodes = []
         self.num_acked_nodes = 1
-        self.quorum = False
+        self.quorumMet = False
         self.key = str(msg['key'])
         self.value = ""
         self.messageId = str(msg['MID'])
-        self.term = term
         self.confirmed = False
-
-    def quorumMet(self, quorum):
-        if quorum > self.num_acked_nodes:
-            self.quorum = False
-        else:
-            self.quorum = True
-        return self.quorum
 
     def ack(self, replica_id):
         if replica_id not in self.acked_nodes:
             self.acked_nodes.append(replica_id)
             self.num_acked_nodes += 1
+            self.quorumMet = self.num_acked_nodes >= self.quorum
 
-    def setValue(self, val):
-        self.value = val
+    def setValue(self, value):
+        self.value = value
 
     def getEntry(self):
         return {"MID": self.messageId, "key": self.key, "value": ""}
 
 
+######################################################################
+#   CLASS: PUTREQUEST
+#
+#       ARGUMENTS
+#
+#           msg             - JSON message from which to create the GetRequest
+#           term            - term in which the GetRequest was received
+#           quorum          - the number of responses that constitutes a quorum
+#
+#       ADDITIONAL STORED VARIABLES
+#
+#           source          - the source of the request
+#           acked_nodes     - array of the IDs of ReplicaNodes that have acked the request
+#           num_acked_nodes - the number of ReplicaNodes that have acked the request
+#           quorumMet       - whether or not the number of ReplicaNodes that acked the request constitutes a quorum
+#           key             - dictionary key
+#           value           - value of dictionary[key] to be stored in the dictionary
+#           messageId       - message Id of the client's request
+#           term            - which term the request was made in
+#           confirmed       - whether or not a response has been sent to the client
+#
+#       METHODS
+#
+#           ack             - add the given replicaId to the array of ackedNodes, increment num_acked_nodes,
+#                             determine if a quorum has been met
+#           setValue        - set the request's value to the given value
+#           getEntry        - returns an entry for the request to be passed in the heartbeat
+#
 class PutRequest:
-    def __init__(self, msg, term):
+    def __init__(self, msg, term, quorum):
+        self.term = term
+        self.quorum = quorum
         self.source = str(msg['src'])
         self.acked_nodes = []
         self.num_acked_nodes = 1
-        self.quorum = False
+        self.quorumMet = False
         self.key = str(msg['key'])
         self.value = str(msg['value'])
         self.messageId = str(msg['MID'])
-        self.term = term
         self.confirmed = False
-
-    def quorumMet(self, quorum):
-        if quorum > self.num_acked_nodes:
-            self.quorum = False
-        else:
-            self.quorum = True
-        return self.quorum
 
     def ack(self, replica_id):
         if replica_id not in self.acked_nodes:
             self.acked_nodes.append(replica_id)
             self.num_acked_nodes += 1
+            self.quorumMet = self.num_acked_nodes >= self.quorum
 
     def getLogEntry(self):
         return {'key': self.key, 'value': {'value': self.value, 'term': self.term}}
 
 
+######################################################################
+#   CLASS: RAFTNODE
+#
+#       ARGUMENTS
+#
+#           my_id                   - id of the ReplicaNode
+#           other_node_ids          - array of the ids of all other nodes
+#
+#       ADDITIONAL STORED VARIABLES
+#
+#           my_state                - the state of the node
+#           my_socket               - socket for messages to and from the node
+#           raft_size               - number of nodes in the raft
+#           quorum                  - number of nodes that constitutes a quorum
+#           other_node_states_dict  - map of node ids to their index in the array of node states
+#           other_node_states       - array that stores state information for each of the other nodes
+#           getRequests             - array of all unresolved get requests
+#           putRequests             - array of all unresolved put requests
+#           requestLog              - log of all client requests
+#           dictionary              - dictionary that stores all [key, value] pairs
+#           node_type               - whether the node is a "follower", "candidate", or "leader
+#           vote_tally              - how many votes the node has received in the current election (if any)
+#           currentLeader           - id of the current leader
+#           electionTimeout         - election timeout value (random value between 150-300ms)
+#           messageCount            - how many messages the node has sent (for use in debugging)
+#           printMessage            - whether or not the node should print messages to the console
+#                                     (for use in debugging)
+#           maxGetReqs              - maximum number of get requests that can be sent in a heartbeat
+#
+#       METHODS
+#
+#           resetElectionTimeout    - obtain a new election timeout value for the node (150-300ms)
+#           requestVotes            - request votes from other nodes
+#           castVote                - cast a vote for a given candidate
+#           selfElect               - initiate a new election
+#           handleVote              - logic for responding to a received vote
+#           handleVoteRequest       - logic for responding to a received vote
+#           becomeLeader            - upon receiving a quorum of votes, become the leader
+#           handleGet               - logic for responding to a get request
+#           confirmMessage          - respond to a client that their request was successfully made
+#           handlePut               - logic for responding to a put request
+#           failMessage             - respond to a client that their request failed or redirect them to the leader
+#           validMessage            - does an incoming message contain the required fields
+#           sendMessage             - JSON encode a given message and send it on the socket
+#           handleHeartbeat         - logic for responding to a received heartbeat
+#           failAllRequests         - fail all pending requests (used when a new leader is elected before the
+#                                     requests are fulfilled)
+#           heartbeat               - create and send a heartbeat message (only used by the leader)
+#
 class RaftNode:
     def __init__(self, my_id, other_node_ids):
         self.my_id = my_id
@@ -106,16 +221,13 @@ class RaftNode:
             self.other_node_states_dict[node_id] = i
         self.getRequests = []
         self.putRequests = []
-        self.pendingRequests = []
         self.requestLog = []
         self.dictionary = dict()
         self.node_type = "follower"
         self.vote_tally = 0
-        self.appendResponses = 0
         self.currentLeader = "FFFF"
         self.electionTimeout = 0.3
         self.resetElectionTimeout()
-        self.sendMessages = []
         self.messageCount = 0
         self.printMessage = False
         self.maxGetReqs = 5
@@ -281,9 +393,6 @@ class RaftNode:
 
     def validMessage(self, msg):
         return msg['src'] and msg['dst'] and msg['type'] and msg['leader']
-
-    def writePut(key, value):
-        return False
 
     def sendMessage(self, message):
         printMessage = False
@@ -537,11 +646,6 @@ deltaHeartbeat = 0
 # timeouts
 heartbeatTimeout = 0.04
 
-
-def validMessage(msg):
-    return msg['src'] and msg['dst'] and msg['type'] and msg['leader']
-
-
 while True:
 
     #ready = select.select([this_node.my_socket], [], [], this_node.electionTimeout)[0]
@@ -571,7 +675,7 @@ while True:
                 deltaTime = 0
                 this_node.resetElectionTimeout()
             msg = json.loads(msg_raw)
-            if validMessage(msg):
+            if this_node.validMessage(msg):
                 src = msg['src']
                 if src not in this_node.other_node_ids:
                     this_node.messageCount += 1

@@ -23,10 +23,19 @@
       <file leaf-file-name="3700kvstore" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/3700kvstore">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="354">
-              <caret line="403" column="55" selection-start-line="403" selection-start-column="55" selection-end-line="403" selection-end-column="55" />
+            <state relative-caret-position="316">
+              <caret line="679" column="55" selection-start-line="679" selection-start-column="55" selection-end-line="679" selection-end-column="55" />
               <folding>
                 <element signature="e#23#33#0" expanded="true" />
+                <element signature="e#9167#10230#0" expanded="false" />
+                <element signature="e#10452#10598#0" expanded="false" />
+                <element signature="e#10636#10945#0" expanded="false" />
+                <element signature="e#10995#11273#0" expanded="false" />
+                <element signature="e#11308#11667#0" expanded="false" />
+                <element signature="e#11708#12009#0" expanded="false" />
+                <element signature="e#12057#12442#0" expanded="false" />
+                <element signature="e#12480#12656#0" expanded="false" />
+                <element signature="e#17443#28459#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -71,7 +80,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scratches" />
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -92,7 +101,7 @@
           </PATH>
         </subPane>
       </pane>
-      <pane id="Scope" />
+      <pane id="Scratches" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -257,18 +266,18 @@
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.32913843" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
     </layout>
   </component>
   <component name="Vcs.Log.UiProperties">
@@ -284,7 +293,7 @@
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
-      <option name="time" value="1" />
+      <option name="time" value="2" />
     </breakpoint-manager>
     <watches-manager />
   </component>
@@ -295,6 +304,15 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#23#33#0" expanded="true" />
+            <element signature="e#9167#10230#0" expanded="false" />
+            <element signature="e#10452#10598#0" expanded="false" />
+            <element signature="e#10636#10945#0" expanded="false" />
+            <element signature="e#10995#11273#0" expanded="false" />
+            <element signature="e#11308#11667#0" expanded="false" />
+            <element signature="e#11708#12009#0" expanded="false" />
+            <element signature="e#12057#12442#0" expanded="false" />
+            <element signature="e#12480#12656#0" expanded="false" />
+            <element signature="e#17443#28459#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -305,6 +323,15 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#23#33#0" expanded="true" />
+            <element signature="e#9167#10230#0" expanded="false" />
+            <element signature="e#10452#10598#0" expanded="false" />
+            <element signature="e#10636#10945#0" expanded="false" />
+            <element signature="e#10995#11273#0" expanded="false" />
+            <element signature="e#11308#11667#0" expanded="false" />
+            <element signature="e#11708#12009#0" expanded="false" />
+            <element signature="e#12057#12442#0" expanded="false" />
+            <element signature="e#12480#12656#0" expanded="false" />
+            <element signature="e#17443#28459#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -315,6 +342,15 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#23#33#0" expanded="true" />
+            <element signature="e#9167#10230#0" expanded="false" />
+            <element signature="e#10452#10598#0" expanded="false" />
+            <element signature="e#10636#10945#0" expanded="false" />
+            <element signature="e#10995#11273#0" expanded="false" />
+            <element signature="e#11308#11667#0" expanded="false" />
+            <element signature="e#11708#12009#0" expanded="false" />
+            <element signature="e#12057#12442#0" expanded="false" />
+            <element signature="e#12480#12656#0" expanded="false" />
+            <element signature="e#17443#28459#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -325,6 +361,15 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#23#33#0" expanded="true" />
+            <element signature="e#9167#10230#0" expanded="false" />
+            <element signature="e#10452#10598#0" expanded="false" />
+            <element signature="e#10636#10945#0" expanded="false" />
+            <element signature="e#10995#11273#0" expanded="false" />
+            <element signature="e#11308#11667#0" expanded="false" />
+            <element signature="e#11708#12009#0" expanded="false" />
+            <element signature="e#12057#12442#0" expanded="false" />
+            <element signature="e#12480#12656#0" expanded="false" />
+            <element signature="e#17443#28459#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -335,16 +380,34 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#23#33#0" expanded="true" />
+            <element signature="e#9167#10230#0" expanded="false" />
+            <element signature="e#10452#10598#0" expanded="false" />
+            <element signature="e#10636#10945#0" expanded="false" />
+            <element signature="e#10995#11273#0" expanded="false" />
+            <element signature="e#11308#11667#0" expanded="false" />
+            <element signature="e#11708#12009#0" expanded="false" />
+            <element signature="e#12057#12442#0" expanded="false" />
+            <element signature="e#12480#12656#0" expanded="false" />
+            <element signature="e#17443#28459#0" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/3700kvstore">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="354">
-          <caret line="403" column="55" selection-start-line="403" selection-start-column="55" selection-end-line="403" selection-end-column="55" />
+        <state relative-caret-position="316">
+          <caret line="679" column="55" selection-start-line="679" selection-start-column="55" selection-end-line="679" selection-end-column="55" />
           <folding>
             <element signature="e#23#33#0" expanded="true" />
+            <element signature="e#9167#10230#0" expanded="false" />
+            <element signature="e#10452#10598#0" expanded="false" />
+            <element signature="e#10636#10945#0" expanded="false" />
+            <element signature="e#10995#11273#0" expanded="false" />
+            <element signature="e#11308#11667#0" expanded="false" />
+            <element signature="e#11708#12009#0" expanded="false" />
+            <element signature="e#12057#12442#0" expanded="false" />
+            <element signature="e#12480#12656#0" expanded="false" />
+            <element signature="e#17443#28459#0" expanded="false" />
           </folding>
         </state>
       </provider>
