@@ -38,6 +38,7 @@ class GetRequest:
         self.value = ""
         self.messageId = str(msg['MID'])
         self.term = term
+        self.confirmed = False
 
     def quorumMet(self, quorum):
         if quorum > self.num_acked_nodes:
@@ -68,6 +69,7 @@ class PutRequest:
         self.value = str(msg['value'])
         self.messageId = str(msg['MID'])
         self.term = term
+        self.confirmed = False
 
     def quorumMet(self, quorum):
         if quorum > self.num_acked_nodes:
@@ -102,9 +104,9 @@ class RaftNode:
             state = ReplicaState(i)
             self.other_node_states.append(state)
             self.other_node_states_dict[node_id] = i
-        self.getRequests = deque()
-        self.putRequests = deque()
-        self.pendingRequests = deque()
+        self.getRequests = []
+        self.putRequests = []
+        self.pendingRequests = []
         self.requestLog = []
         self.dictionary = dict()
         self.node_type = "follower"
@@ -123,7 +125,7 @@ class RaftNode:
 
     def resetElectionTimeout(self):
         # set the election timeout to a random number between 0.150 and 0.300
-        self.electionTimeout = float(float(random.randrange(300, 500))/1000)
+        self.electionTimeout = float(float(random.randrange(150, 300))/1000)
 
     def requestVotes(self):
         for replica_id in self.other_node_ids:
@@ -204,26 +206,26 @@ class RaftNode:
         uni = True
         if reqType == 'get':
             if uni:
-                response = {'src': str(self.my_id), 'dst': str(request.src),
+                response = {'src': str(self.my_id), 'dst': str(request.source),
                             'leader': str(self.currentLeader), 'type': 'ok',
-                            'MID': str(msg['MID']), 'value': str(request.value)}
+                            'MID': str(request.messageId), 'value': str(request.value)}
             else:
-                response = {'src': str(self.my_id), 'dst': str(request.src),
+                response = {'src': str(self.my_id), 'dst': str(request.source),
                             'leader': str(self.currentLeader), 'type': 'ok',
-                            'MID': str(msg['MID']), 'value': str(request.value)}
+                            'MID': str(request.messageId), 'value': str(request.value)}
         elif reqType == 'put':
             if uni:
-                response = {'src': str(self.my_id), 'dst': str(request.src),
+                response = {'src': str(self.my_id), 'dst': str(request.source),
                             'leader': str(self.currentLeader), 'type': 'ok',
-                            'MID': str(msg['MID'])}
+                            'MID': str(request.messageId)}
             else:
-                response = {'src': str(self.my_id), 'dst': str(request.src),
+                response = {'src': str(self.my_id), 'dst': str(request.source),
                             'leader': str(self.currentLeader), 'type': 'ok',
-                            'MID': str(msg['MID'])}
+                            'MID': str(request.messageId)}
         if len(response) > 0:
-            print "################################"
-            print str(response)
-            print "################################"
+            # print "################################"
+            # print str(response)
+            # print "################################"
             self.sendMessage(response)
 
     def handlePut(self, msg):
@@ -280,7 +282,7 @@ class RaftNode:
         return False
 
     def sendMessage(self, message):
-        printMessage = True
+        printMessage = False
         if printMessage:
             print str(message) + " TIME: " + str(time.time())
         self.my_socket.send(json.dumps(message))
@@ -292,11 +294,12 @@ class RaftNode:
     ########################
 
     def handleHeartbeat(self, msg):
+        """
         if msg['get']:
             messageId = msg['get']['MID']
             if self.node_type == "follower":
                 key = msg['get']['key']
-                if key in self.dictionary.keys:
+                if self.dictionary.has_key(key):
                     val = {}
                     if self.dictionary.get(key):
                         val = {}
@@ -306,12 +309,14 @@ class RaftNode:
             elif self.node_type == "leader":
                 val = msg['get']['value']
                 for req in self.getRequests:
-                    if req.messageId == messageId and req.val == val:
+                    if req.messageId == messageId and req.value == val:
                         req.ack(msg['src'])
                         if req.quorumMet(self.quorum):
                             self.confirmMessage(req, 'get')
+
                             self.getRequests.remove(req)
                         break
+        """
 
         if msg['term'] and msg['appendEntries']:
             getResponse = {}
@@ -343,25 +348,33 @@ class RaftNode:
                                     for req in self.putRequests:
                                         if req.key == key and req.value == value:
                                             req.ack(msg['src'])
-                                            if req.quorumMet(self.quorum):
+                                            if req.quorumMet(self.quorum) and not req.confirmed:
                                                 print "Committing entry: 'key: " + str(key) + ", 'value': " + str(value)
                                                 self.dictionary[key] = value
                                                 self.confirmMessage(req, 'put')
+                                                req.confirmed = True
+                                            if req.num_acked_nodes == len(self.other_node_ids):
                                                 self.putRequests.remove(req)
-                                                continue
+                                            break
                                 self.my_state.pCommitted = pPend
                     elif msg['appendEntries']['status'] == "fail":
                         node_state.status = "fail"
-                    if msg['get']:
-                        messageId = msg['get']['MID']
-                        val = msg['get']['value']['value']
-                        for req in self.getRequests:
-                            if req.messageId == messageId and req.val == val:
-                                req.ack(msg['src'])
-                                if req.quorumMet(self.quorum):
-                                    self.confirmMessage(req, 'get')
-                                    self.getRequests.remove(req)
-                                break
+                    if len(msg['get']) > 0:
+                        getResponses = []
+                        for req in msg['get']:
+                            # print str(msg)
+                            messageId = req['MID']
+                            # print req['value']['value']
+                            val = req['value']['value']
+                            # print val
+                            for greq in self.getRequests:
+                                if greq.messageId == req['MID'] and greq.value == val:
+                                    greq.ack(msg['src'])
+                                    if greq.quorumMet(self.quorum) and not greq.confirmed:
+                                        self.confirmMessage(greq, 'get')
+                                        greq.confirmed = True
+                                    if greq.num_acked_nodes >= len(self.other_node_ids):
+                                        self.getRequests.remove(greq)
                 elif self.node_type == "follower":
                     self.currentLeader = str(msg['leader'])
                     dest = str(msg['src'])
@@ -382,7 +395,7 @@ class RaftNode:
                                 key = self.requestLog[i + self.my_state.pCommitted]['key']
                                 value = self.requestLog[i + self.my_state.pCommitted]['value']['value']
                                 # print "Committing entry: 'key: " + str(key) + ", 'value': " + str(value)
-                                self.dictionary[key] = value
+                                self.dictionary[key] = {'value': value, 'term': self.my_state.term}
                             self.my_state.pCommitted = pComm
                             message = {'src': self.my_id, 'dst': dest, 'leader': self.currentLeader,
                                        'term': self.my_state.term, 'type': 'heartbeat',
@@ -408,7 +421,7 @@ class RaftNode:
                             key = self.requestLog[i + self.my_state.pCommitted]['key']
                             value = self.requestLog[i + self.my_state.pCommitted]['value']['value']
                             # print "Committing entry: 'key: " + str(key) + ", 'value': " + str(value)
-                            self.dictionary[key] = value
+                            self.dictionary[key] = {'value': value, 'term': self.my_state.term}
                         self.my_state.pPending = pPend
                         self.my_state.pCommitted = pComm
                         message = {'src': self.my_id, 'dst': dest, 'leader': self.currentLeader,
@@ -416,16 +429,20 @@ class RaftNode:
                                    'appendEntries': {'status': 'ok', 'pPending': self.my_state.pPending,
                                                      'pCommitted': self.my_state.pCommitted, "entries": {}}, 'get': {}}
                     if len(msg['get']) > 0:
-                        messageId = msg['get']['MID']
-                        key = msg['get']['key']
-                        if key in self.dictionary.keys:
-                            getResponse = {'MID': messageId, 'key': key, 'value': self.dictionary.get(key)}
-                        else:
-                            getResponse = {'MID': messageId, 'key': key, 'value': ''}
-                        message['get'] = getResponse
+                        getResponses = []
+                        for req in msg['get']:
+                            messageId = req['MID']
+                            key = req['key']
+                            if self.dictionary.has_key(key):
+                                getResponse = {'MID': messageId, 'key': key, 'value': self.dictionary.get(key)}
+                                getResponses.append(getResponse)
+                            else:
+                                getResponse = {'MID': messageId, 'key': key, 'value': {}}
+                                getResponses.append(getResponse)
+                            message['get'] = getResponses
                     self.sendMessage(message)
 
-    def failAllMessages(self):
+    def failAllRequests(self):
         for greq in self.getRequests:
             message = {'src': str(self.my_id), 'dst': str(greq.source),
                         'leader': str(self.currentLeader), 'type': 'redirect',
@@ -444,7 +461,9 @@ class RaftNode:
         entries = []
         getRequest = None
         if len(self.getRequests) > 0:
-            getRequest = self.getRequests[0]
+            getRequest = []
+            for req in self.getRequests:
+                getRequest.append(req.getEntry())
         message = {}
         for id in self.other_node_ids:
             node_state = self.other_node_states[self.other_node_states_dict.get(id)]
@@ -458,32 +477,32 @@ class RaftNode:
                                "term": self.my_state.term,
                                "appendEntries": {
                                    "status": "ok", "pPending": pPend, "pCommitted": pComm, "entries": entries},
-                               "get": getRequest.getEntry()}
+                               "get": getRequest}
                 else:
                     message = {"src": self.my_id, "dst": id, "leader": self.currentLeader, "type": "heartbeat",
                                "term": self.my_state.term,
                                "appendEntries": {
-                                   "status": "ok", "pPending": pPend, "pCommitted": pComm, "entries": entries}, 'get': {}}
+                                   "status": "ok", "pPending": pPend, "pCommitted": pComm, "entries": entries}, 'get': []}
             elif node_state.status == "fail":
                 entries = self.requestLog[node_pComm:pPend]
                 if getRequest is not None:
                     message = {"src": self.my_id, "dst": id, "leader": self.currentLeader, "type": "heartbeat",
                                "term": self.my_state.term,
                                "appendEntries": {"status": "override", "pPending": pPend, "pCommitted": pComm,
-                                                 "entries": entries}, "get": getRequest.getEntry()}
+                                                 "entries": entries}, "get": getRequest}
                 else:
                     message = {"src": self.my_id, "dst": id, "leader": self.currentLeader, "type": "heartbeat",
                                "term": self.my_state.term,
                                "appendEntries": {"status": "override", "pPending": pPend, "pCommitted": pComm,
-                                                 "entries": entries}, 'get': {}}
+                                                 "entries": entries}, 'get': []}
 
             self.sendMessage(message)
 
 
 this_node = RaftNode(sys.argv[1], sys.argv[2:])
 
-print("Num Nodes: " + str(len(sys.argv[2:])))
-print("Quorum: " + str(this_node.quorum))
+# print("Num Nodes: " + str(len(sys.argv[2:])))
+# print("Quorum: " + str(this_node.quorum))
 
 # Connect to the network. All messages to/from other replicas and clients will
 # occur over this socket
@@ -494,7 +513,7 @@ deltaTime = 0
 deltaHeartbeat = 0
 
 # timeouts
-heartbeatTimeout = 0.1
+heartbeatTimeout = 0.03
 
 
 def validMessage(msg):
@@ -516,11 +535,11 @@ while True:
         this_node.selfElect()
     elif deltaHeartbeat >= heartbeatTimeout and this_node.node_type == "leader":
         heartbeatTimer = currentTime
-        print "Heartbeat{'leader': " + str(this_node.my_id) + ", 'time': " + str(currentTime) + "}"
+        # print "Heartbeat{'leader': " + str(this_node.my_id) + ", 'time': " + str(currentTime) + "}"
         deltaHeartbeat = 0
         this_node.heartbeat()
     else:
-        ready = select.select([this_node.my_socket], [], [], 0.05)[0]
+        ready = select.select([this_node.my_socket], [], [], 0.01)[0]
         if this_node.my_socket in ready:
             msg_raw = this_node.my_socket.recv(32768)
 
@@ -538,14 +557,18 @@ while True:
 
                         type = str(msg['type'])
                         if type == 'get':
+                            """
                             print "********************************"
                             print str(msg)
                             print "********************************"
+                            """
                             this_node.handleGet(msg)
                         if type == 'put':
+                            """
                             print "********************************"
                             print str(msg)
                             print "********************************"
+                            """
                             this_node.handlePut(msg)
 
 
