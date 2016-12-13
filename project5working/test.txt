@@ -1,0 +1,173 @@
+Basic tests (5 replicas, 30 seconds, 500 requests):
+	No drops, no failures, 80% read         	[PASS]
+	No drops, no failures, 20% read         	[PASS]
+Unreliable network tests (5 replicas, 30 seconds, 500 requests):
+	5% drops, no failures, 20% read         	[PASS]
+		Testing error: Too many failed and/or unanswered responses to client put() requests
+	10% drops, no failures, 20% read        	[FAIL]
+		Testing error: Too many failed and/or unanswered responses to client get() requests
+		Testing error: Too many failed and/or unanswered responses to client put() requests
+	15% drops, no failures, 20% read        	[FAIL]
+Crash failure tests (5 replicas, 30 seconds, 500 requests):
+	No drops, 1 replica failure, 20% read   	[PASS]
+	No drops, 2 replica failures, 20% read  	[PASS]
+*** Simulator Error - client received an incorrect value for a key: {"src": "0001", "dst": "001B", "MID": "43RXPEFEKBRPQOO5", "value": "190ef056c0ea4189a86907560b461ea2", "type": "ok", "leader": "0001"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0001", "dst": "0017", "MID": "LESNKLTTSJ4UPH0E", "value": "", "type": "ok", "leader": "0001"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0001", "dst": "001C", "MID": "Q0Y4RURMJO665568", "value": "", "type": "ok", "leader": "0001"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0001", "dst": "0017", "MID": "5UPVUZ4DUEFK9IR9", "value": "", "type": "ok", "leader": "0001"}
+		Testing error: >0 incorrect responses to get()
+		Testing error: Too many failed and/or unanswered responses to client get() requests
+		Testing error: Too many failed and/or unanswered responses to client put() requests
+	No drops, 1 leader failure, 20% read    	[FAIL]
+		Testing error: Too many failed and/or unanswered responses to client get() requests
+		Testing error: Too many failed and/or unanswered responses to client put() requests
+	No drops, 2 leader failures, 20% read   	[FAIL]
+Partition tests (5 replicas, 30 seconds, 500 requests):
+	No drops, 1 easy partition, 20% read    	[PASS]
+		Testing error: Too many failed and/or unanswered responses to client put() requests
+	No drops, 2 easy partitions, 20% read   	[FAIL]
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001C", "MID": "3RU1JWZ39WWSD2BF", "value": "0f3496618e0d46e23756c0342d3edff6", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "J8W2JJ8BZZ9IYTNO", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001C", "MID": "KYOAJCX6LE0Z827Z", "value": "0f3496618e0d46e23756c0342d3edff6", "type": "ok", "leader": "0004"}
+		Testing error: >0 incorrect responses to get()
+		Testing error: Too many failed and/or unanswered responses to client get() requests
+		Testing error: Too many failed and/or unanswered responses to client put() requests
+	No drops, 1 hard partition, 20% read    	[FAIL]
+*** Simulator Error - client received an incorrect value for a key: {"src": "0002", "dst": "0016", "MID": "DT3ZNUGCFFNSQWE9", "value": "", "type": "ok", "leader": "0002"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0002", "dst": "0016", "MID": "SLN8KEBF4O190FRE", "value": "", "type": "ok", "leader": "0002"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0002", "dst": "0016", "MID": "T2QUAIPF5BS5RKYN", "value": "8a725f4220c0330162b834fdca2787da", "type": "ok", "leader": "0002"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0002", "dst": "0016", "MID": "660J9LZMDK8GECLE", "value": "", "type": "ok", "leader": "0002"}
+		Testing error: >0 incorrect responses to get()
+		Testing error: Too many failed and/or unanswered responses to client get() requests
+		Testing error: Too many failed and/or unanswered responses to client put() requests
+	No drops, 2 hard partitions, 20% read   	[FAIL]
+Bring the pain (5 replicas, 30 seconds):
+		Testing error: Too many failed and/or unanswered responses to client get() requests
+		Testing error: Too many failed and/or unanswered responses to client put() requests
+	1000 requests, 10% drops, 2 hard partitions and 1 leader failures, 20% read	[FAIL]
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001B", "MID": "IA797VCULODMFZTH", "value": "9c90488e23331b357a235b8420fec727", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "ND038HYBNDXYVHQZ", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001B", "MID": "C5Y1JAMEMR16S6IR", "value": "8de7901310b05bdcff75c6b8dbf65ac7", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "4QGIZZ4VSR8JG1IU", "value": "11b99991d98e66c1863421cf30c9a591", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "R1RVV6RYWQWQLN1H", "value": "11b99991d98e66c1863421cf30c9a591", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0019", "MID": "CWR55GQWPT9QQWFG", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001B", "MID": "RCTM073RPUGGIX93", "value": "2a897426aa7d38d9c32eb6208a015168", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "16NHAX5Q0NP3MXMD", "value": "c0ce5f77c018844fdf05837ad6457e1e", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0016", "MID": "E975FAA11D1RL8MC", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001B", "MID": "MH3XXF1XQHL7G1J0", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0016", "MID": "TUKJNP1BSD7R2P9E", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0016", "MID": "B8JJDGKNJ8TIOCMX", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001C", "MID": "LYZC4VXG429QJKF8", "value": "aa9fb9830edc101d15410da0a2f4a2cb", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001C", "MID": "HNCCNARCU7B2NKDW", "value": "aa9fb9830edc101d15410da0a2f4a2cb", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001C", "MID": "P56YP09RFCRPCHTF", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "E2RV0EFIV78RGQ5X", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001C", "MID": "TFK6OJ66TXCHTV1E", "value": "00d3a01eafadbd072d473d8ac9bf9f27", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001A", "MID": "EO8C76YB2W5OPGN9", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001C", "MID": "ELH5R91KLNPIYKDS", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001C", "MID": "38PV1U8QSWBDPBC2", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "SN3LV2Z87ENS7CIP", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "1WRANIGAMCQVK008", "value": "86091321eeb36e82774e88f7894eb167", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0016", "MID": "N5RCN001RTN0LEQ0", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001C", "MID": "1I0MZKAG940ZI142", "value": "032c842be8a1c8ae7bd407286f470eb6", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001C", "MID": "CB1XVHTJ8S5KR05T", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001C", "MID": "Y839FY1F9W7FA7S8", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001C", "MID": "T7J14Z3E7XHUIHWB", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0018", "MID": "UWPDLLZ4VETF9TDV", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0018", "MID": "FNYXTB2VFC62EE8N", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0019", "MID": "GLBBC6WM3ZEVTXP6", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001C", "MID": "5EGDMGCTY1UO96KQ", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "HWPJOAID2X4YTAR0", "value": "11b99991d98e66c1863421cf30c9a591", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0019", "MID": "SYEO01VGZJ0CG994", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0018", "MID": "PWVTZ7YBYCVV3I4J", "value": "0d0ea223b08966d90cc4e94ebbe9a388", "type": "ok", "leader": "0004"}
+		Testing error: >0 incorrect responses to get()
+		Testing error: Too many failed and/or unanswered responses to client get() requests
+		Testing error: Too many failed and/or unanswered responses to client put() requests
+	800 requests, 15% drops, 2 leader failures, 20% read	[FAIL]
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001A", "MID": "SC679AUN5WU7ZATB", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001B", "MID": "1C1VRZC6CSSHY06R", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001B", "MID": "JTMW894EQ47JSUHM", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001A", "MID": "V8I014CRJNZS5ECM", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "OOMLNCVQSKXCN06G", "value": "d9e996b2e114772876f6288c4e0ad872", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0019", "MID": "LRVNUQEPTHLJH16Y", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0019", "MID": "GVK1233E55UPIPOI", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0018", "MID": "T6CX2OR9MZSQO1DC", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001B", "MID": "ITHW77TY6PMQ2D7B", "value": "b612193b56f0469953580af6e9391c38", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001B", "MID": "PIDUIA6QRTNFN5J9", "value": "b612193b56f0469953580af6e9391c38", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "FJ8VVHMA1BUSZB5B", "value": "d9e996b2e114772876f6288c4e0ad872", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "BOEONEPD12JAV8P4", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0019", "MID": "C8HI4A0DLMDSOKE7", "value": "dd20ca8edcb750aa174929f31e4fae26", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0019", "MID": "EXYEUZPY9MU8835J", "value": "dd20ca8edcb750aa174929f31e4fae26", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "C1Z2RSEDEC315Q5B", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "9U2755XNIKBZ1VRC", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "ZN76C76LUI48SCI4", "value": "94f74baf3d734d122a5289f63e9ee688", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "XHHZCOC5FQMJ1KQ0", "value": "94f74baf3d734d122a5289f63e9ee688", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0019", "MID": "6HTOC90GDFYNH8WV", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "3BG2OQPY4IYJX70Q", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "JCZKJPO4DU01FL31", "value": "d9e996b2e114772876f6288c4e0ad872", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "ESR7AA9ZADRJH43R", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0018", "MID": "WGULXUKDVCEFSIAI", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "NI56WFFARNFHDA56", "value": "94f74baf3d734d122a5289f63e9ee688", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "D794SP0XFC6F5G5Q", "value": "94f74baf3d734d122a5289f63e9ee688", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0018", "MID": "UA39PEUH3CY7AFTG", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "A8K9R1K6WZXMME6G", "value": "94f74baf3d734d122a5289f63e9ee688", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001A", "MID": "ZARVMO6VIL9548VT", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0019", "MID": "8VILIRQCD9B4O5YK", "value": "dd20ca8edcb750aa174929f31e4fae26", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0019", "MID": "KNAVUTJ8LNZHLIVX", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001B", "MID": "DLDAQ68NK8AJ26BE", "value": "b612193b56f0469953580af6e9391c38", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0018", "MID": "44U77BKX8WDUVSHF", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "GZLPUHN5IM9Q2VKZ", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001A", "MID": "YO3GG29Z3XEO3FW7", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0018", "MID": "P4OPICG60MPXJMCP", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "QV0PJW90W4XL916N", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "GIIUISM86JB22SPL", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001B", "MID": "DV3B5MNPLY1MI7BL", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "W6UP1HA8XTF5D7U5", "value": "d9e996b2e114772876f6288c4e0ad872", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001B", "MID": "6P3FRUEFL6T9P6WR", "value": "b612193b56f0469953580af6e9391c38", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001B", "MID": "SBFQILUPR7DW5EHR", "value": "b612193b56f0469953580af6e9391c38", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "TTOKNHOOHOOVHLFQ", "value": "94f74baf3d734d122a5289f63e9ee688", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001B", "MID": "ESK75W1TO5OYD4LS", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001A", "MID": "B2ETLXZ6AYE36OI3", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "EG0Q0X9G1QW96L5E", "value": "94f74baf3d734d122a5289f63e9ee688", "type": "ok", "leader": "0004"}
+		Testing error: >0 incorrect responses to get()
+		Testing error: Too many failed and/or unanswered responses to client get() requests
+		Testing error: Too many failed and/or unanswered responses to client put() requests
+	500 requests, 50% drops, 1 leader failure, 20% read	[FAIL]
+Bonus Mode Extra Credit! (5 replicas, 30 seconds, 1000 requests):
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0019", "MID": "QDOWSSS0FZFXE3R2", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "ZM90ZY5AYBP8TKJL", "value": "cb61a5bf0db29139ba62b5c9edb61231", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "OJZ7UTDACNUS8SJY", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001A", "MID": "RD3RLZ2VXP6OPQHH", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0016", "MID": "PPT30W7LN817JJDE", "value": "af993c86bd838f8b5fcc6fc95f1e7b9a", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001A", "MID": "3ZIQ4HH16YT8IE2X", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "5P1QW1X5JXFYMNAM", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "9KM9I6TOXB9M6NFK", "value": "a54fd526d468cefb13bf0ce1a2307883", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "HIKOBHNSG1BBYKVJ", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "4J9R3S8T9BT1MZN2", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0016", "MID": "UPQCLEXLIPF9IYVT", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "94CNEQAQNSE1XZGY", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "69WX9VC2UX5WX5CA", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "4CW3SFNR4TPUNO6J", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "QPR9U4BF2COYNMF6", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "GJAGHLEBNMX40WV1", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001A", "MID": "UBCG34X273PRG8JU", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0016", "MID": "6Y057W6BR7R8A7VC", "value": "b64994c47233ca01118f176b741545d1", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "001A", "MID": "VMZOZN04DRSWRJ4U", "value": "a08138c1e452165dcb9ae5d170786acd", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0016", "MID": "8K5BW5EG9PF4BQV6", "value": "b64994c47233ca01118f176b741545d1", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0016", "MID": "TIL1QO0TJCQO2JJU", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "VWY3IQW48DTXNGL6", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "WJD7BNXTP8A1CD5E", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "IXKGZTK6P98MIFAG", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0016", "MID": "RWTJE6RFZ5RVDRJY", "value": "267f8136c5507038317049663e6cab24", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0019", "MID": "8HUX4PMHPI0N70M9", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0016", "MID": "FNQKSAPOX8N6IF47", "value": "af993c86bd838f8b5fcc6fc95f1e7b9a", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "O74BLXNYAL52HTTJ", "value": "a54fd526d468cefb13bf0ce1a2307883", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0019", "MID": "6FIPMU8I57IOONXV", "value": "3b8f747c23ca82906d7e748132f7df31", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0015", "MID": "NK4MRAQWCNRKD8T0", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0017", "MID": "SIMGPF1CUWAYU2H1", "value": "", "type": "ok", "leader": "0004"}
+*** Simulator Error - client received an incorrect value for a key: {"src": "0004", "dst": "0019", "MID": "HRL2IFBC5QXALDFO", "value": "", "type": "ok", "leader": "0004"}
+		Testing error: >0 incorrect responses to get()
+		Testing error: Too many failed and/or unanswered responses to client get() requests
+		Testing error: Too many failed and/or unanswered responses to client put() requests
+	10% drops, 3 hard partions and 1 leader kill, 20% read	[FAIL]
+Passed 6 out of 17 tests
+
