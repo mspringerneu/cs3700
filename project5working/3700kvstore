@@ -278,7 +278,7 @@ class RaftNode:
         self.isHealing = False
         self.isPartitioned = False
         self.lastCommitTimer = self.currentTime
-        self.maxCommitTimer = 0.5
+        self.maxCommitTimer = 0.2
         self.timeoutCommits = False
 
     #############################
@@ -554,12 +554,12 @@ class RaftNode:
                                                       + str(value) + " TIME: " + str(time.time()) + " MSG# " \
                                                       + str(self.messageCount)
                                             self.dictionary[key] = {'value': value, 'term': self.my_state.term}
-                                            self.resetCommitTimer()
                                             self.confirmMessage(req, 'put')
-                                            req.confirmed = True
+                                            # req.confirmed = True
                                             self.my_state.pCommitted = pPend
-                                        if req.num_acked_nodes == len(self.other_node_ids):
                                             self.putRequests.remove(req)
+                                        #if req.num_acked_nodes == len(self.other_node_ids):
+                                            #self.putRequests.remove(req)
                                         break
                     else:
                         node_state.status = "fail"
@@ -583,12 +583,12 @@ class RaftNode:
                                                   + str(value) + " TIME: " + str(time.time()) + " MSG# " \
                                                   + str(self.messageCount)
                                         self.dictionary[key] = {'value': value, 'term': self.my_state.term}
-                                        self.resetCommitTimer()
                                         self.confirmMessage(req, 'put')
-                                        req.confirmed = True
-                                        self.my_state.pCommitted = pPend
-                                    if req.num_acked_nodes == len(self.other_node_ids):
                                         self.putRequests.remove(req)
+                                        # req.confirmed = True
+                                        self.my_state.pCommitted = pPend
+                                    #if req.num_acked_nodes == len(self.other_node_ids):
+                                        # self.putRequests.remove(req)
                                     break
                     node_state.pPending = pPend
                     node_state.pCommitted = pComm
@@ -619,10 +619,10 @@ class RaftNode:
                             # if there is a quorum for the request and the request has not already been confirmed
                             if self.getRequests[num].quorumMet and not self.getRequests[num].confirmed:
                                 self.confirmMessage(self.getRequests[num], 'get')
-                                self.getRequests[num].confirmed = True
+                                # self.getRequests[num].confirmed = True
                             # if all nodes have responded to the request
-                            if self.getRequests[num].num_acked_nodes == len(self.other_node_ids):
-                                self.getRequests.remove(self.getRequests[num])
+                            #if self.getRequests[num].num_acked_nodes == len(self.other_node_ids):
+                            #    self.getRequests.remove(self.getRequests[num])
                             break
 
     def handleHeartbeatFollower(self, msg):
