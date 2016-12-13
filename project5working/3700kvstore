@@ -249,7 +249,7 @@ class RaftNode:
             self.other_node_states.append(state)
             self.other_node_states_dict[node_id] = i
         self.getRequests = []
-        self.putRequests = deque()
+        self.putRequests = []
         self.requestLog = []
         self.dictionary = dict()
         self.node_type = "follower"
@@ -557,7 +557,7 @@ class RaftNode:
                                             self.confirmMessage(req, 'put')
                                             # req.confirmed = True
                                             self.my_state.pCommitted = pPend
-                                            self.putRequests.popleft()
+                                            self.putRequests.remove(req)
                                         #if req.num_acked_nodes == len(self.other_node_ids):
                                             #self.putRequests.remove(req)
                                         break
@@ -584,7 +584,7 @@ class RaftNode:
                                                   + str(self.messageCount)
                                         self.dictionary[key] = {'value': value, 'term': self.my_state.term}
                                         self.confirmMessage(req, 'put')
-                                        self.putRequests.popleft()
+                                        self.putRequests.remove(req)
                                         # req.confirmed = True
                                     break
                                     #if req.num_acked_nodes == len(self.other_node_ids):
