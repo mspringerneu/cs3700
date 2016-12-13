@@ -439,7 +439,7 @@ class RaftNode:
     def handlePut(self, msg):
         # todo: check fail/ok conditions
         if msg['key'] and msg['value']:
-            if self.node_type == "leader" and not self.isPartitioned:
+            if self.node_type == "leader":
                 request = PutRequest(msg, self.my_state.term, self.quorum)
                 entry = request.getLogEntry()
                 self.requestLog.append(entry)
@@ -486,12 +486,7 @@ class RaftNode:
         response = {}
         # fail message
         if self.my_id == self.currentLeader:
-            if self.isPartitioned:
-                response = {'src': self.my_id, 'dst': msg['src'],
-                        'leader': 'FFFF', 'type': 'fail',
-                        'MID': msg['MID']}
-            else:
-                response = {'src': self.my_id, 'dst': msg['src'],
+            response = {'src': self.my_id, 'dst': msg['src'],
                             'leader': self.currentLeader, 'type': 'fail',
                             'MID': msg['MID']}
         # redirect message
@@ -1044,15 +1039,11 @@ while True:
 
     # logic for checking for election timeouts
     this_node.setCurrentTime()
-    if this_node.timeoutCommits:
-        this_node.lastCommitTimeout()
 
     hasFailedNodes = this_node.hasFailedNodes()
-    hasBeaten = False
     if this_node.node_type == "leader" and this_node.hasFailedNodes():
-        if not this_node.isPartitioned and not hasBeaten:
-            this_node.heartbeat()
-            hasBeaten = True
+        this_node.heartbeat()
+        hasBeaten = True
     ready = select.select([this_node.my_socket], [], [], 0.03)[0]
     if this_node.my_socket in ready:
         msg_raw = this_node.my_socket.recv(32768)
@@ -1066,17 +1057,14 @@ while True:
                 type = str(msg['type'])
                 if src not in this_node.other_node_ids:
                     this_node.messageCount += 1
-                    if this_node.isPartitioned:
-                        this_node.failMessage(msg)
-                    else:
-                        if this_node.printClientMessages:
-                            print "********************************"
-                            print str(msg) + " TIME: " + str(time.time()) + " MSG# " + str(this_node.messageCount)
-                            print "********************************"
-                        if type == 'get':
-                            this_node.handleGetLazy(msg)
-                        if type == 'put':
-                            this_node.handlePut(msg)
+                    if this_node.printClientMessages:
+                        print "********************************"
+                        print str(msg) + " TIME: " + str(time.time()) + " MSG# " + str(this_node.messageCount)
+                        print "********************************"
+                    if type == 'get':
+                        this_node.handleGetLazy(msg)
+                    if type == 'put':
+                        this_node.handlePut(msg)
 
                 # Handle election voting
                 else:
@@ -1098,6 +1086,5 @@ while True:
         this_node.selfElect()
     # if the heartbeat timer has timed out,
     elif this_node.checkHbTimeout() and this_node.node_type == "leader":
-        if not this_node.isPartitioned and not hasBeaten:
-            this_node.resetHbTimeout()
-            this_node.heartbeat()
+        this_node.resetHbTimeout()
+        this_node.heartbeat()
