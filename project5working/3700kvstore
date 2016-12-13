@@ -311,13 +311,6 @@ class RaftNode:
     def resetCommitTimer(self):
         self.lastCommitTimer = self.currentTime
 
-    def lastCommitTimeout(self):
-        if self.currentTime - self.lastCommitTimer >= self.maxCommitTimer:
-            self.isPartitioned = True
-            self.failAllRequests()
-        else:
-            self.isPartitioned = False
-
     ##############################
     ##                          ##
     ##     ELECTION HANDLING    ##
@@ -519,10 +512,12 @@ class RaftNode:
                 self.my_state.toTerm(msg['term'])
                 self.node_type = "follower"
                 self.currentLeader = msg['leader']
-                self.failHeartbeat()
-                self.isPartitioned = False
-                self.resetCommitTimer()
                 self.failAllRequests()
+                self.my_state.pPending = self.my_state.pCommitted
+                # trim your log to only your committed log entries
+                subArray = self.requestLog[:self.my_state.pCommitted]
+                self.requestLog = subArray
+                self.failHeartbeat()
             elif msg['term'] == self.my_state.term:
                 # follower's pending pointer
                 pPend = msg['appendEntries']['pPending']
@@ -640,8 +635,10 @@ class RaftNode:
                 self.my_state.toTerm(msg['term'])
                 self.node_type = "follower"
                 self.currentLeader = msg['leader']
-                self.isPartitioned = False
-                self.resetCommitTimer()
+                self.my_state.pPending = self.my_state.pCommitted
+                # trim your log to only your committed log entries
+                subArray = self.requestLog[:self.my_state.pCommitted]
+                self.requestLog = subArray
                 self.failHeartbeat()
             # if we are in the same term as the leader
             elif msg['term'] == self.my_state.term and msg['src'] == msg['leader']:
@@ -912,14 +909,14 @@ class RaftNode:
 
     def failAllRequests(self):
         for greq in self.getRequests:
-            if not greq.confirmed:
+            if not greq.confirmed or self.currentTime - greq.birth >= self.maxCommitTimer:
                 message = {'src': str(self.my_id), 'dst': str(greq.source),
                             'leader': str(self.currentLeader), 'type': 'redirect',
                             'MID': str(greq.messageId)}
                 self.sendMessage(message)
         self.getRequests = []
         for preq in self.putRequests:
-            if not preq.confirmed:
+            if not preq.confirmed or self.currentTime - greq.birth >= self.maxCommitTimer:
                 message = {'src': str(self.my_id), 'dst': str(preq.source),
                            'leader': str(self.currentLeader), 'type': 'redirect',
                            'MID': str(preq.messageId)}
