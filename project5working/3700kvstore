@@ -985,12 +985,15 @@ class RaftNode:
             if node_state.status == "ok":
                 # if there are new pending entries, retrieve them from the log
                 if pComm != pPend:
+                    entries = self.requestLog[node_pComm:pPend]
+                    """
                     if pComm - node_pComm > self.maxOverrideEntries:
                         entries = self.requestLog[node_pComm:node_pComm + self.maxOverrideEntries]
                     elif pComm - node_pComm > self.maxOverrideEntries:
                         entries = self.requestLog[node_pComm:node_pComm + self.maxOverrideEntries]
                     else:
                         entries = self.requestLog[node_pComm:pPend]
+                        """
                 # if there are any pending get requests, add them to the heartbeat
                 if getRequest is not None:
                     message = {"src": self.my_id, "dst": id, "leader": self.currentLeader, "type": "heartbeat",
