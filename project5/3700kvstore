@@ -9,6 +9,28 @@ import random
 from collections import deque
 
 
+######################################################################
+#   CLASS: REPLICASTATE
+#
+#       ARGUMENTS
+#
+#           index           - the index of the replica state(to be used by the ReplicaNode that stores it in an array)
+#
+#       ADDITIONAL STORED VARIABLES
+#
+#           term            - what term the ReplicaNode thinks it is in
+#           votes           - the number of votes the ReplicaNode can still cast this term
+#           pPending        - pointer to the where the next pending appendEntry should be placed in the log
+#           pCommitted      - pointer to the next pending entry in the log to be committed
+#           lastEntryTerm   - term of the last committed request
+#           status          - status message to send in heartbeat responses - "ok" if synced with leader, "fail" if not
+#
+#       METHODS
+#
+#           nextTerm        - increment the term by 1 and set votes to 1
+#           parsePageHTML   - increment to the given term and set votes to 1
+#           getEntry        - returns an entry for the state to be passed in a voteRequest
+#
 class ReplicaState:
     def __init__(self, index):
         self.index = index
@@ -16,6 +38,7 @@ class ReplicaState:
         self.votes = 1
         self.pPending = 0
         self.pCommitted = 0
+        self.lastEntryTerm = 0
         self.status = "ok"
 
     def nextTerm(self):
@@ -27,66 +50,275 @@ class ReplicaState:
             self.term = term
             self.votes = 1
 
+    def getEntry(self):
+        return {"term": self.term, "pPending": self.pPending,
+                "pCommitted": self.pCommitted, 'lastEntryTerm': self.lastEntryTerm}
 
+
+######################################################################
+#   CLASS: GETREQUEST
+#
+#       ARGUMENTS
+#
+#           msg             - JSON message from which to create the GetRequest
+#           term            - term in which the GetRequest was received
+#           quorum          - the number of responses that constitutes a quorum
+#
+#       ADDITIONAL STORED VARIABLES
+#
+#           source          - the source of the request
+#           acked_nodes     - array of the IDs of ReplicaNodes that have acked the request
+#           num_acked_nodes - the number of ReplicaNodes that have acked the request
+#           quorumMet       - whether or not the number of ReplicaNodes that acked the request constitutes a quorum
+#           key             - dictionary key
+#           value           - value of dictionary[key] to be returned to the client
+#           messageId       - message Id of the client's request
+#           term            - which term the request was made in
+#           confirmed       - whether or not a response has been sent to the client
+#
+#       METHODS
+#
+#           ack             - add the given replicaId to the array of ackedNodes, increment num_acked_nodes,
+#                             determine if a quorum has been met
+#           setValue        - set the request's value to the given value
+#           getEntry        - returns an entry for the request to be passed in the heartbeat
+#
 class GetRequest:
-    def __init__(self, msg, term):
+    def __init__(self, msg, term, quorum):
+        self.term = term
+        self.quorum = quorum
         self.source = str(msg['src'])
         self.acked_nodes = []
         self.num_acked_nodes = 1
-        self.quorum = False
+        self.quorumMet = False
+        self.quorumValue = ""
         self.key = str(msg['key'])
-        self.value = ""
+        # map of ids to what they currently believe the response to the get request is
+        self.idToValue = {}
+        # map of value responses to how many votes they have received
+        self.voteMap = {}
+        self.myValue = ""
+        self.nullVotes = 1
         self.messageId = str(msg['MID'])
-        self.term = term
         self.confirmed = False
+        self.deltaTime = 0
+        self.printGetMessages = False
+        self.birth = time.time()
 
-    def quorumMet(self, quorum):
-        if quorum > self.num_acked_nodes:
-            self.quorum = False
-        else:
-            self.quorum = True
-        return self.quorum
-
-    def ack(self, replica_id):
+    def ack(self, replica_id, otherVal):
         if replica_id not in self.acked_nodes:
             self.acked_nodes.append(replica_id)
             self.num_acked_nodes += 1
+            self.idToValue[replica_id] = otherVal
+            if otherVal != "":
+                if otherVal in self.voteMap.keys():
+                    self.voteMap[otherVal] += 1
+                else:
+                    self.voteMap[otherVal] = 1
+            else:
+                self.nullVotes += 1
+        else:
+            previousVote = self.idToValue[replica_id]
+            if previousVote != "":
+                self.voteMap[previousVote] -= 1
+            else:
+                self.nullVotes -= 1
+            if otherVal != "":
+                if otherVal in self.voteMap.keys():
+                    self.voteMap[otherVal] += 1
+                else:
+                    self.voteMap[otherVal] = 1
+            else:
+                self.nullVotes += 1
+        if self.printGetMessages:
+            print self.getPrintMessage()
+        if not self.quorumMet:
+            self.checkQuorumMet()
+        self.deltaTime = time.time() - self.birth
+        """
+        if not self.quorumMet and not self.confirmed:
+            if otherVal == self.value:
+                self.valueVotes += 1
+            elif otherVal != "" and otherVal == self.otherValue:
+                self.otherValueVotes +=1
+            else:
+                if otherVal != "":
+                    self.otherValue = otherVal
+                    self.otherValueVotes = 1
+            if self.valueVotes >= self.quorum:
+                self.quorumMet = True
+            elif self.otherValueVotes >= self.quorum:
+                self.value = self.otherValue
+                self.quorumMet = True
+            """
 
-    def setValue(self, val):
-        self.value = val
+    def setValue(self, value):
+        self.quorumValue = value
+        self.quorumMet = True
+
+    def leaderUpdate(self, value):
+        if self.myValue != value:
+            if value == "":
+                self.voteMap[self.myValue] -= 1
+                self.myValue = ""
+                self.nullVotes += 1
+            else:
+                if self.myValue == "":
+                    self.nullVotes -= 1
+                if value in self.voteMap.keys():
+                    self.voteMap[value] += 1
+                else:
+                    self.voteMap[value] = 1
+            self.checkQuorumMet()
 
     def getEntry(self):
         return {"MID": self.messageId, "key": self.key, "value": ""}
 
+    def checkQuorumMet(self):
+        if self.nullVotes >= self.quorum:
+            self.quorumMet = True
+            self.quorumValue = ""
+        else:
+            for key in self.voteMap.keys():
+                if self.voteMap[key] >= self.quorum:
+                    self.quorumMet = True
+                    self.quorumValue = key
+                    break
 
+    def getPrintMessage(self):
+        msg = ""
+        if self.quorumMet:
+            if self.quorumValue != "":
+                msg = "GET STATUS:{'MID': " + str(self.messageId) + "'key': " + str(self.key) + ", 'value': " + str(self.quorumValue) + ", 'quorum?': " + str(
+                    self.quorumMet) + ", 'votes': " + str(self.voteMap[self.quorumValue]) + "}"
+            else:
+                msg = "GET STATUS:{'MID': " + str(self.messageId) + "'key': " + str(self.key) + ", 'value': '', 'quorum?': " + str(
+                    self.quorumMet) + ", 'votes': " + str(self.nullVotes) + "}"
+        else:
+            msg = "GET STATUS:{'MID': " + str(self.messageId) + "'key': " + str(self.key) + ", 'values': " + str(self.voteMap) + ", 'quorum?': " + str(
+                self.quorumMet) + "}"
+        return msg
+
+######################################################################
+#   CLASS: PUTREQUEST
+#
+#       ARGUMENTS
+#
+#           msg             - JSON message from which to create the GetRequest
+#           term            - term in which the GetRequest was received
+#           quorum          - the number of responses that constitutes a quorum
+#
+#       ADDITIONAL STORED VARIABLES
+#
+#           source          - the source of the request
+#           acked_nodes     - array of the IDs of ReplicaNodes that have acked the request
+#           num_acked_nodes - the number of ReplicaNodes that have acked the request
+#           quorumMet       - whether or not the number of ReplicaNodes that acked the request constitutes a quorum
+#           key             - dictionary key
+#           value           - value of dictionary[key] to be stored in the dictionary
+#           messageId       - message Id of the client's request
+#           term            - which term the request was made in
+#           confirmed       - whether or not a response has been sent to the client
+#
+#       METHODS
+#
+#           ack             - add the given replicaId to the array of ackedNodes, increment num_acked_nodes,
+#                             determine if a quorum has been met
+#           setValue        - set the request's value to the given value
+#           getEntry        - returns an entry for the request to be passed in the heartbeat
+#
 class PutRequest:
-    def __init__(self, msg, term):
+    def __init__(self, msg, term, quorum):
+        self.term = term
+        self.quorum = quorum
         self.source = str(msg['src'])
         self.acked_nodes = []
         self.num_acked_nodes = 1
-        self.quorum = False
+        self.quorumMet = False
         self.key = str(msg['key'])
         self.value = str(msg['value'])
         self.messageId = str(msg['MID'])
-        self.term = term
         self.confirmed = False
-
-    def quorumMet(self, quorum):
-        if quorum > self.num_acked_nodes:
-            self.quorum = False
-        else:
-            self.quorum = True
-        return self.quorum
+        self.birth = time.time()
 
     def ack(self, replica_id):
         if replica_id not in self.acked_nodes:
             self.acked_nodes.append(replica_id)
             self.num_acked_nodes += 1
+            self.quorumMet = self.num_acked_nodes >= self.quorum
 
     def getLogEntry(self):
         return {'key': self.key, 'value': {'value': self.value, 'term': self.term}}
 
 
+######################################################################
+#   CLASS: RAFTNODE
+#
+#       ARGUMENTS
+#
+#           my_id                   - id of the ReplicaNode
+#           other_node_ids          - array of the ids of all other nodes
+#
+#       ADDITIONAL STORED VARIABLES
+#
+#           my_state                - the state of the node
+#           my_socket               - socket for messages to and from the node
+#           raft_size               - number of nodes in the raft
+#           quorum                  - number of nodes that constitutes a quorum
+#           other_node_states_dict  - map of node ids to their index in the array of node states
+#           other_node_states       - array that stores state information for each of the other nodes
+#           getRequests             - array of all unresolved get requests
+#           putRequests             - array of all unresolved put requests
+#           requestLog              - log of all client requests
+#           dictionary              - dictionary that stores all [key, value] pairs
+#           node_type               - whether the node is a "follower", "candidate", or "leader
+#           vote_tally              - how many votes the node has received in the current election (if any)
+#           currentLeader           - id of the current leader
+#           electionTimer           - timer for handling elections
+#           electionTimeout         - election timeout value (random value between 150-300ms)
+#           deltaElecTime           - how much time has passed since the last election timer reset
+#           hbTimer                 - timer for handling heartbeats
+#           heartbeatTimeout        - election timeout value (random value between 150-300ms)
+#           deltaHbTime             - how much time has passed since the last election timer reset
+#           messageCount            - how many messages the node has sent (for use in debugging)
+#           printOwnMessages        - whether or not the node should print messages it sends to the console
+#                                     (for use in debugging)
+#           printClientMessages     - whether or not the node should print messages from clients to the console
+#                                     (for use in debugging)
+#           printClientResponses    - whether or not the node should print messages to clients to the console
+#                                     (for use in debugging)
+#           printElectionMessages   - whether or not the node should print election messages to the console
+#                                     (for use in debugging)
+#           printHeartbeatResponses - whether or not the node should print messages to clients to the console
+#                                     (for use in debugging)
+#           printCommits            - whether or not the node should print election messages to the console
+#                                     (for use in debugging)
+#           maxGetReqs              - maximum number of get requests that can be sent in a heartbeat
+#
+#       METHODS
+#
+#           resetElectionTimeout    - obtain a new election timeout value for the node (150-300ms) and reset the timer
+#           checkElectionTimeout    - determine if the election timer has timed out
+#           resetHbTimeout          - reset the node's heartbeat timer
+#           checkHBTimeout          - determine if the heartbeat timer has timed out
+#           requestVotes            - request votes from other nodes
+#           isValidCandidate        - determine if a candidate's voteRequest is valid
+#           castVote                - cast a vote for a given candidate
+#           selfElect               - initiate a new election
+#           handleVote              - logic for responding to a received vote
+#           handleVoteRequest       - logic for responding to a received vote
+#           becomeLeader            - upon receiving a quorum of votes, become the leader
+#           handleGet               - logic for responding to a get request
+#           confirmMessage          - respond to a client that their request was successfully made
+#           handlePut               - logic for responding to a put request
+#           failMessage             - respond to a client that their request failed or redirect them to the leader
+#           validMessage            - does an incoming message contain the required fields
+#           sendMessage             - JSON encode a given message and send it on the socket
+#           handleHeartbeat         - logic for responding to a received heartbeat
+#           failAllRequests         - fail all pending requests (used when a new leader is elected before the
+#                                     requests are fulfilled)
+#           heartbeat               - create and send a heartbeat message (only used by the leader)
+#
 class RaftNode:
     def __init__(self, my_id, other_node_ids):
         self.my_id = my_id
@@ -106,19 +338,68 @@ class RaftNode:
             self.other_node_states_dict[node_id] = i
         self.getRequests = []
         self.putRequests = []
-        self.pendingRequests = []
         self.requestLog = []
         self.dictionary = dict()
         self.node_type = "follower"
         self.vote_tally = 0
-        self.appendResponses = 0
         self.currentLeader = "FFFF"
+        self.currentTime = time.time()
+        self.electionTimer = self.currentTime
         self.electionTimeout = 0.3
+        self.deltaElecTime = 0
         self.resetElectionTimeout()
-        self.sendMessages = []
+        self.hbTimer = self.currentTime
+        self.heartbeatTimeout = 0.08
+        self.deltaHbTime = 0
         self.messageCount = 0
-        self.printMessage = False
+        self.printOwnMessages = False
+        self.printClientMessages = False
+        self.printClientResponses = False
+        self.printElectionMessages = False
+        self.printNewLeader = False
+        self.printHeartbeats = False
+        self.printHeartbeatResponses = False
+        self.printFailedHeartbeats = False
+        self.printCommits = False
+        self.printGetMessages = False
+        self.printPutMessages = False
         self.maxGetReqs = 5
+        self.maxOverrideEntries = 10
+        self.isHealing = False
+        self.isPartitioned = False
+        self.lastCommitTimer = self.currentTime
+        self.maxRequestTimer = 0.3
+        self.timeoutCommits = False
+
+    #############################
+    ##                         ##
+    ##     TIMEOUT HANDLING    ##
+    ##                         ##
+    #############################
+
+    def setCurrentTime(self):
+        self.currentTime = time.time()
+
+    def resetElectionTimeout(self):
+        # set the election timeout to a random number between 0.150 and 0.300
+        self.electionTimeout = float(float(random.randrange(150, 300))/1000)
+        self.electionTimer = self.currentTime
+        self.deltaElecTime = 0
+
+    def checkElectionTimeout(self):
+        self.deltaElecTime = self.currentTime - self.electionTimer
+        return self.deltaElecTime >= self.electionTimeout
+
+    def resetHbTimeout(self):
+        self.hbTimer = self.currentTime
+        self.deltaHbTime = 0
+
+    def checkHbTimeout(self):
+        self.deltaHbTime = self.currentTime - self.hbTimer
+        return self.deltaHbTime >= self.heartbeatTimeout
+
+    def resetCommitTimer(self):
+        self.lastCommitTimer = self.currentTime
 
     ##############################
     ##                          ##
@@ -126,60 +407,81 @@ class RaftNode:
     ##                          ##
     ##############################
 
-    def resetElectionTimeout(self):
-        # set the election timeout to a random number between 0.150 and 0.300
-        self.electionTimeout = float(float(random.randrange(150, 300))/1000)
-
-    def requestVotes(self):
-        for replica_id in self.other_node_ids:
-            vote = {'src': self.my_id, 'dst': replica_id, 'type': 'voteRequest', 'leader': self.currentLeader,
-                    'term': self.my_state.term,
-                    'candidate': self.my_id}
-            self.sendMessage(vote)
-        self.my_state.votes = 0
-
-    def castVote(self, candidate, dst):
-        if self.my_state.votes > 0:
-            vote = {'src': self.my_id, 'dst': dst, 'type': 'vote', 'leader': self.currentLeader, 'term': self.my_state.term,
-                               'candidate': candidate}
-            self.sendMessage(vote)
-            self.my_state.votes = 0
-
     def selfElect(self):
-        #self.resetElectionTimeout()
         self.node_type = "candidate"
         self.my_state.nextTerm()
         self.currentLeader = self.my_id
         # votes received
         self.vote_tally = 1
-        # print "ELECTION{'term': " + str(self.my_state.term) + ", 'candidate': " + str(self.my_id) + ", 'time': " + str(currentTime) + "}"
+        if self.printElectionMessages:
+            print "ELECTION{'term': " + str(self.my_state.term) + ", 'candidate': " + str(self.my_id) + ", 'time': " + str(self.currentTime) + "}"
         self.requestVotes()
+
+    def requestVotes(self):
+        for replica_id in self.other_node_ids:
+            self.my_state.pPending = self.my_state.pCommitted
+            # trim your log to only your committed log entries
+            subArray = self.requestLog[:self.my_state.pCommitted]
+            self.requestLog = subArray
+            voteRequest = {'src': self.my_id, 'dst': replica_id, 'type': 'voteRequest', 'leader': self.currentLeader,
+                           'state': self.my_state.getEntry(), 'candidate': self.my_id}
+            self.sendMessage(voteRequest)
+        self.my_state.votes = 0
+
+    def castVote(self, candidate, dst):
+        self.currentLeader = candidate
+        self.node_type = "follower"
+        vote = {'src': self.my_id, 'dst': dst, 'type': 'vote', 'leader': self.currentLeader, 'term': self.my_state.term,
+                'candidate': candidate}
+        if self.printElectionMessages:
+            print str(vote)
+        self.sendMessage(vote)
+        self.my_state.votes = 0
+
+    def isValidCandidate(self, state):
+        return state['term'] >= self.my_state.term and \
+               state['pCommitted'] >= self.my_state.pPending and \
+               state['lastEntryTerm'] >= self.my_state.lastEntryTerm
+
+    def handleVoteRequest(self, msg):
+        state = msg['state']
+        if self.isValidCandidate(state):
+            candidate = msg['candidate']
+            term = state['term']
+            if term > self.my_state.term:
+                self.my_state.toTerm(term)
+                if self.node_type == "leader":
+                    self.failAllRequests()
+                self.my_state.pPending = self.my_state.pCommitted
+                # trim your log to only your committed log entries
+                subArray = self.requestLog[:self.my_state.pCommitted]
+                self.requestLog = subArray
+                self.resetElectionTimeout()
+                self.castVote(candidate, candidate)
+            elif term == self.my_state.term and self.my_state.votes > 0:
+                self.resetElectionTimeout()
+                self.castVote(candidate, candidate)
 
     def handleVote(self, msg):
         term = msg['term']
-        candidate = str(msg['candidate'])
+        candidate = msg['candidate']
         if self.node_type == "candidate":
             if term == self.my_state.term and candidate == self.my_id:
                 self.vote_tally += 1
                 if self.vote_tally >= self.quorum:
                     self.becomeLeader()
 
-    def handleVoteRequest(self, msg):
-        term = msg['term']
-        candidate = str(msg['candidate'])
-        if term > self.my_state.term:
-            self.node_type = "follower"
-            self.my_state.toTerm(term)
-            self.currentLeader = candidate
-            self.castVote(candidate, candidate)
-        elif term == self.my_state.term and self.my_state.votes > 0:
-            self.castVote(candidate, candidate)
-
     def becomeLeader(self):
-        #print("New leader: " + str(self.my_id) + ", Quorum: " + str(self.quorum))
+        if self.printElectionMessages:
+            print "New leader: " + str(self.my_id) + ", Quorum: " + str(self.quorum) + \
+                  ", State: " + str(self.my_state.getEntry())
         self.node_type = "leader"
         self.vote_tally = 0
         self.currentLeader = self.my_id
+        self.getRequests = []
+        self.putRequests = []
+        self.heartbeatBroadcast()
+        self.resetHbTimeout()
 
     ##############################
     ##                          ##
@@ -187,108 +489,137 @@ class RaftNode:
     ##                          ##
     ##############################
 
-    def handleGet(self, msg):
-        if msg['key']:
-            if self.node_type == "leader":
-                request = GetRequest(msg, self.my_state.term)
-                if msg['key'] in self.dictionary.keys():
-                    request.setValue(self.dictionary.get(msg['key'])['value'])
+    def validMessage(self, msg):
+        return msg['src'] and msg['dst'] and msg['type'] and msg['leader']
 
-                # if there is only one node in the raft
-                if request.quorumMet(self.quorum):
-                    self.confirmMessage(request, "get")
+    def handleGetProper(self, msg):
+        if msg['key']:
+            key = msg['key']
+            if self.node_type == "leader":
+                request = GetRequest(msg, self.my_state.term, self.quorum)
+                if key in self.dictionary.keys():
+                    request.leaderUpdate(self.dictionary[key]['value'])
+                    # if there is only one node in the raft
+                    if request.quorumMet:
+                        self.confirmMessage(request, "get")
+                    else:
+                        self.getRequests.append(request)
                 else:
+                    request.nullVotes = 1
                     self.getRequests.append(request)
             else:
                 self.failMessage(msg)
         else:
             self.failMessage(msg)
 
-    def confirmMessage(self, request, reqType):
-        response = {}
-        uni = True
-        if reqType == 'get':
-            if uni:
-                response = {'src': str(self.my_id), 'dst': str(request.source),
-                            'leader': str(self.currentLeader), 'type': 'ok',
-                            'MID': str(request.messageId), 'value': str(request.value)}
-            else:
-                response = {'src': str(self.my_id), 'dst': str(request.source),
-                            'leader': str(self.currentLeader), 'type': 'ok',
-                            'MID': str(request.messageId), 'value': str(request.value)}
-        elif reqType == 'put':
-            if uni:
-                response = {'src': str(self.my_id), 'dst': str(request.source),
-                            'leader': str(self.currentLeader), 'type': 'ok',
-                            'MID': str(request.messageId)}
-            else:
-                response = {'src': str(self.my_id), 'dst': str(request.source),
-                            'leader': str(self.currentLeader), 'type': 'ok',
-                            'MID': str(request.messageId)}
-        if len(response) > 0:
-            if self.printMessage:
-                print "################################"
-                print str(response) + "TIME: " + str(time.time()) + " MSG# " + str(self.messageCount)
-                print "################################"
-            self.sendMessage(response)
-
-    def handlePut(self, msg):
-        # todo: check fail/ok conditions
-        if msg['key'] and msg['value']:
+    def handleGetLazy(self, msg):
+        if msg['key']:
+            key = msg['key']
             if self.node_type == "leader":
-                request = PutRequest(msg, self.my_state.term)
-                entry = request.getLogEntry()
-                self.requestLog.append(entry)
-                self.my_state.pPending += 1
-
-                # if there is only one node in the raft
-                if request.quorumMet(self.quorum):
-                    self.confirmMessage(request, "put")
-                    self.my_state.pCommitted += 1
+                request = GetRequest(msg, self.my_state.term, self.quorum)
+                if key in self.dictionary.keys():
+                    request.setValue(self.dictionary[key]['value'])
+                    self.confirmMessage(request, "get")
                 else:
-                    self.putRequests.append(request)
-
+                    self.confirmMessage(request, 'get')
             else:
                 self.failMessage(msg)
         else:
             self.failMessage(msg)
 
+    def handlePut(self, msg):
+        # todo: check fail/ok conditions
+        if msg['key'] and msg['value']:
+            if self.node_type == "leader":
+                request = PutRequest(msg, self.my_state.term, self.quorum)
+                entry = request.getLogEntry()
+                self.requestLog.append(entry)
+                self.my_state.pPending += 1
+                # if there is only one node in the raft
+                if request.quorumMet:
+                    self.dictionary[request.key] = {'value': request.value, 'term': self.my_state.term}
+                    self.confirmMessage(request, "put")
+                    self.my_state.pCommitted += 1
+                else:
+                    self.putRequests.append(request)
+                    self.resetHbTimeout()
+                    self.heartbeatBroadcast()
+            else:
+                self.failMessage(msg)
+        else:
+            self.failMessage(msg)
+
+    #############################
+    ##                         ##
+    ##     CLIENT RESPONSES    ##
+    ##                         ##
+    #############################
+
+    def updateMyGetRequests(self):
+        for greq in self.getRequests:
+            key = greq.key
+            val = ""
+            if key in self.dictionary.keys():
+                val = self.dictionary[key]['value']
+            greq.leaderUpdate(val)
+
+    def confirmMessage(self, request, reqType):
+        response = {}
+        if reqType == 'get':
+            response = {'src': self.my_id, 'dst': request.source,
+                        'leader': self.currentLeader, 'type': 'ok',
+                        'MID': request.messageId, 'value': request.quorumValue}
+        elif reqType == 'put':
+            response = {'src': self.my_id, 'dst': request.source,
+                        'leader': self.currentLeader, 'type': 'ok',
+                        'MID': request.messageId}
+        if len(response) > 0:
+            if self.printClientResponses:
+                print "################################"
+                print "CONFIRMED: " + str(response) + "TIME: " + str(time.time()) + " MSG# " + str(self.messageCount)
+                print "################################"
+            self.sendMessage(response)
+
+    def failRequest(self, request):
+        response = {}
+        # fail message
+        if self.my_id == self.currentLeader:
+            response = {'src': self.my_id, 'dst': request.source,
+                        'leader': self.currentLeader, 'type': 'fail',
+                        'MID': request.messageId}
+        # redirect message
+        elif msg['dst'] == self.my_id:
+            response = {'src': self.my_id, 'dst': request.source,
+                        'leader': self.currentLeader, 'type': 'redirect',
+                        'MID': request.messageId}
+        if len(response) > 0:
+            if self.printClientResponses:
+                print "################################"
+                print "FAILED: " + str(response) + "TIME: " + str(time.time()) + " MSG# " + str(self.messageCount)
+                print "################################"
+            self.sendMessage(response)
+
     def failMessage(self, msg):
         # todo: might have to change else case
         response = {}
-        uni = True
         # fail message
         if self.my_id == self.currentLeader:
-            if uni:
-                response = {'src': str(self.my_id), 'dst': str(msg['src']), 'leader': str(self.currentLeader), 'type': 'fail',
-                            'MID': str(msg['MID'])}
-            else:
-                response = {'src': str(self.my_id), 'dst': str(msg['src']),
-                        'leader': str(self.currentLeader), 'type': 'fail',
-                        'MID': str(msg['MID'])}
+            response = {'src': self.my_id, 'dst': msg['src'],
+                            'leader': self.currentLeader, 'type': 'fail',
+                            'MID': msg['MID']}
         # redirect message
         elif msg['dst'] == self.my_id:
-            if uni:
-                response = {'src': str(self.my_id), 'dst': str(msg['src']),
-                        'leader': str(self.currentLeader), 'type': 'redirect',
-                        'MID': str(msg['MID'])}
-            else:
-                response = {'src': str(self.my_id), 'dst': str(msg['src']),
-                        'leader': str(self.currentLeader), 'type': 'redirect',
-                        'MID': str(msg['MID'])}
+            response = {'src': self.my_id, 'dst': msg['src'],
+                    'leader': self.currentLeader, 'type': 'redirect',
+                    'MID': msg['MID']}
         if len(response) > 0:
+            if self.printClientResponses:
+                print "################################"
+                print "FAILED: " + str(response) + "TIME: " + str(time.time()) + " MSG# " + str(self.messageCount)
+                print "################################"
             self.sendMessage(response)
 
-    def validMessage(self, msg):
-        return msg['src'] and msg['dst'] and msg['type'] and msg['leader']
-
-    def writePut(key, value):
-        return False
-
     def sendMessage(self, message):
-        printMessage = False
-        if self.printMessage:
-            print str(message) + " TIME: " + str(time.time()) + " MSG# " + str(self.messageCount)
         self.my_socket.send(json.dumps(message))
         self.messageCount += 1
 
@@ -298,215 +629,432 @@ class RaftNode:
     ##                    ##
     ########################
 
-    def handleHeartbeat(self, msg):
-        """
-        if msg['get']:
-            messageId = msg['get']['MID']
-            if self.node_type == "follower":
-                key = msg['get']['key']
-                if self.dictionary.has_key(key):
-                    val = {}
-                    if self.dictionary.get(key):
-                        val = {}
-                    getResponse = {'MID': messageId, 'key': key, 'value': {}}
-                else:
-                    getResponse = {'MID': messageId, 'key': key, 'value': ''}
-            elif self.node_type == "leader":
-                val = msg['get']['value']
-                for req in self.getRequests:
-                    if req.messageId == messageId and req.value == val:
-                        req.ack(msg['src'])
-                        if req.quorumMet(self.quorum):
-                            self.confirmMessage(req, 'get')
-
-                            self.getRequests.remove(req)
-                        break
-        """
-
+    def handleHeartbeatLeader(self, msg):
         if msg['term'] and msg['appendEntries']:
             getResponse = {}
             message = {}
             if msg['term'] > self.my_state.term:
                 self.my_state.toTerm(msg['term'])
                 self.node_type = "follower"
-                self.currentLeader = str(msg['leader'])
-                message = {'src': self.my_id, 'dst': msg['src'], 'leader': self.currentLeader,
-                           'term': self.my_state.term, 'type': 'heartbeat',
-                           'appendEntries': {'status': 'fail', 'pPending': self.my_state.pPending,
-                                             'pCommitted': self.my_state.pCommitted, "entries": {}}}
-                self.sendMessage(message)
+                self.currentLeader = msg['leader']
                 self.failAllRequests()
+                self.my_state.pPending = self.my_state.pCommitted
+                # trim your log to only your committed log entries
+                subArray = self.requestLog[:self.my_state.pCommitted]
+                self.requestLog = subArray
+                self.resetElectionTimeout()
+                self.failHeartbeat()
             elif msg['term'] == self.my_state.term:
-                if self.node_type == "leader":
-                    pPend = msg['appendEntries']['pPending']
-                    pComm = msg['appendEntries']['pCommitted']
-                    node_state = self.other_node_states[self.other_node_states_dict.get(msg['src'])]
+                # follower's pending pointer
+                pPend = msg['appendEntries']['pPending']
+                # follower's committed pointer
+                pComm = msg['appendEntries']['pCommitted']
+                # stored information about the follower's state
+                node_state = self.other_node_states[self.other_node_states_dict.get(msg['src'])]
+                # update node's state based on heartbeat
+                node_state.pPending = pPend
+                node_state.pCommitted = pComm
+                # update any pending get requests
+                self.updateGetRequests(msg['get'])
+                if msg['appendEntries']['status'] == "ok":
+                    # update node's state based on heartbeat
                     node_state.pPending = pPend
                     node_state.pCommitted = pComm
-                    if msg['appendEntries']['status'] == "ok":
+                    # if the node has the same pointers as you, it's status is valid
+                    if pPend <= self.my_state.pPending and pComm <= self.my_state.pCommitted:
                         node_state.status = "ok"
-                        if pPend >= node_state.pPending and pComm == node_state.pCommitted:
-                            if pPend - pComm > 0:
-                                for i in range(pPend - pComm):
-                                    key = self.requestLog[i + pComm]['key']
-                                    value = self.requestLog[i + pComm]['value']['value']
-                                    for req in self.putRequests:
-                                        if req.key == key and req.value == value:
-                                            req.ack(msg['src'])
-                                            if req.quorumMet(self.quorum) and not req.confirmed:
-                                                # print "Committing entry: 'key: " + str(key) + ", 'value': " + str(value) + " TIME: " + str(time.time()) + " MSG# " + str(self.messageCount)
-                                                self.dictionary[key] = {'value': value, 'term': self.my_state.term}
-                                                self.confirmMessage(req, 'put')
-                                                req.confirmed = True
-                                            if req.num_acked_nodes == len(self.other_node_ids):
-                                                self.putRequests.remove(req)
-                                            break
-                                self.my_state.pCommitted = pPend
-                    elif msg['appendEntries']['status'] == "fail":
-                        node_state.status = "fail"
-                    if len(msg['get']) > 0:
-                        getResponses = []
-                        getReqs = msg['get']
-                        for req in getReqs:
-                            # print str(msg)
-                            messageId = req['MID']
-                            # print req['value']['value']
-                            if len(req['value']) > 0:
-                                val = req['value']
-                                # print val
-                                for num in range(len(self.getRequests)):
-                                    # print str(self.getRequests[num].value) + " == " + str(val)
-                                    if self.getRequests[num].messageId == messageId and self.getRequests[num].value == val:
-                                        #print str(self.getRequests[num].value) + " == " + str(val)
-                                        self.getRequests[num].ack(msg['src'])
-                                        if self.getRequests[num].quorumMet(self.quorum) and not self.getRequests[num].confirmed:
-                                            self.confirmMessage(self.getRequests[num], 'get')
-                                            self.getRequests[num].confirmed = True
-                                        if self.getRequests[num].num_acked_nodes >= len(self.other_node_ids):
-                                            self.getRequests.remove(self.getRequests[num])
+                        if pPend > self.my_state.pCommitted:
+                            for i in range(pPend - self.my_state.pCommitted):
+                                key = self.requestLog[i + pComm]['key']
+                                value = self.requestLog[i + pComm]['value']['value']
+                                term = self.requestLog[i + pComm]['value']['term']
+                                # find the pending put request
+                                newCommits = False
+                                for req in self.putRequests:
+                                    if req.key == key and req.value == value:
+                                        # acknowledge the request
+                                        req.ack(msg['src'])
+                                        # if there is a quorum, respond to the client and update the dictionary
+                                        if req.quorumMet and not req.confirmed:
+                                            if self.printCommits:
+                                                print "Committing entry: 'key: " + str(key) + ", 'value': " \
+                                                      + str(value) + " TIME: " + str(time.time()) + " MSG# " \
+                                                      + str(self.messageCount)
+                                            self.dictionary[key] = {'value': value, 'term': self.my_state.term}
+                                            self.confirmMessage(req, 'put')
+                                            req.confirmed = True
+                                            newCommits = True
+                                            self.my_state.pCommitted += 1
+                                            self.putRequests.remove(req)
+                                        #if req.num_acked_nodes == len(self.other_node_ids):
+                                            #self.putRequests.remove(req)
                                         break
-                elif self.node_type == "follower":
-                    self.currentLeader = str(msg['leader'])
-                    dest = str(msg['src'])
-                    pPend = msg['appendEntries']['pPending']
-                    pComm = msg['appendEntries']['pCommitted']
-                    msgEntries = msg['appendEntries']['entries']
-                    if msg['appendEntries']['status'] == "ok":
-                        if self.my_state.pCommitted == pComm and self.my_state.pPending < pPend:
-                            for i in range(pPend - self.my_state.pPending):
-                                self.requestLog.append(msgEntries[i])
-                            self.my_state.pPending = pPend
-                            message = {'src': self.my_id, 'dst': dest, 'leader': self.currentLeader,
-                                       'term': self.my_state.term, 'type': 'heartbeat',
-                                       'appendEntries': {'status': 'ok', 'pPending': self.my_state.pPending,
-                                                         'pCommitted': self.my_state.pCommitted, "entries": {}}, 'get': {}}
-                        elif self.my_state.pPending <= pPend and self.my_state.pCommitted < pComm:
-                            if self.my_state.pPending > pComm:
-                                for i in range(pComm - self.my_state.pCommitted):
-                                    key = self.requestLog[i + self.my_state.pCommitted]['key']
-                                    value = self.requestLog[i + self.my_state.pCommitted]['value']['value']
-                                    self.dictionary[key] = {'value': value, 'term': self.my_state.term}
-                                self.my_state.pCommitted = pComm
-                                message = {'src': self.my_id, 'dst': dest, 'leader': self.currentLeader,
-                                           'term': self.my_state.term, 'type': 'heartbeat',
-                                           'appendEntries': {'status': 'ok', 'pPending': self.my_state.pPending,
-                                                             'pCommitted': self.my_state.pCommitted, "entries": {}}, 'get': {}}
-                            else:
-                                message = {'src': self.my_id, 'dst': dest, 'leader': self.currentLeader,
-                                           'term': self.my_state.term, 'type': 'heartbeat',
-                                           'appendEntries': {'status': 'fail', 'pPending': self.my_state.pPending,
-                                                             'pCommitted': self.my_state.pCommitted, "entries": {}},
-                                           'get': {}}
-                        elif self.my_state.pCommitted == pComm and self.my_state.pPending == pPend:
-                            message = {'src': self.my_id, 'dst': dest, 'leader': self.currentLeader,
-                                       'term': self.my_state.term, 'type': 'heartbeat',
-                                       'appendEntries': {'status': 'ok', 'pPending': self.my_state.pPending,
-                                                         'pCommitted': self.my_state.pCommitted, "entries": {}},
-                                       'get': {}}
-                        else:
-                            message = {'src': self.my_id, 'dst': dest, 'leader': self.currentLeader,
-                                       'term': self.my_state.term, 'type': 'heartbeat',
-                                       'appendEntries': {'status': 'fail', 'pPending': self.my_state.pPending,
-                                                         'pCommitted': self.my_state.pCommitted, "entries": {}}, 'get': {}}
-                    elif msg['appendEntries']['status'] == "override":
-                        entrySubArray = self.requestLog[:pComm]
-                        for i in range(pPend - self.my_state.pCommitted):
-                            entrySubArray.append(msgEntries[i])
-                        self.requestLog = entrySubArray
+                                if newCommits:
+                                    self.updateMyGetRequests()
+                    else:
+                        node_state.status = "fail"
+                        self.resetHbTimeout()
+                        self.heartbeatSingle(msg['src'])
+                        self.isHealing = True
+                elif msg['appendEntries']['status'] == "override":
+                    # update node's state based on heartbeat
+                    if pComm > node_state.pCommitted:
                         for i in range(pComm - self.my_state.pCommitted):
                             key = self.requestLog[i + self.my_state.pCommitted]['key']
                             value = self.requestLog[i + self.my_state.pCommitted]['value']['value']
-                            self.dictionary[key] = {'value': value, 'term': self.my_state.term}
-                        self.my_state.pPending = pPend
-                        self.my_state.pCommitted = pComm
-                        message = {'src': self.my_id, 'dst': dest, 'leader': self.currentLeader,
-                                   'term': self.my_state.term, 'type': 'heartbeat',
-                                   'appendEntries': {'status': 'ok', 'pPending': self.my_state.pPending,
-                                                     'pCommitted': self.my_state.pCommitted, "entries": {}}, 'get': {}}
-                    if len(msg['get']) > 0:
-                        getResponses = []
-                        getReqs = msg['get']
-                        for req in getReqs:
-                            messageId = req['MID']
-                            key = req['key']
-                            if self.dictionary.has_key(key):
-                                getResponse = {'MID': messageId, 'key': key, 'value': self.dictionary.get(key)['value']}
-                                getResponses.append(getResponse)
+                            term = self.requestLog[i + self.my_state.pCommitted]['value']['term']
+                            # find the pending put request
+                            newCommits = False
+                            for req in self.putRequests:
+                                if req.key == key and req.value == value:
+                                    # acknowledge the request
+                                    req.ack(msg['src'])
+                                    # if there is a quorum, respond to the client and update the dictionary
+                                    if req.quorumMet and not req.confirmed:
+                                        if self.printCommits:
+                                            print "Committing entry: 'key: " + str(key) + ", 'value': " \
+                                                  + str(value) + " TIME: " + str(time.time()) + " MSG# " \
+                                                  + str(self.messageCount)
+                                        self.dictionary[key] = {'value': value, 'term': self.my_state.term}
+                                        self.my_state.pCommitted += 1
+                                        newCommits = True
+                                        self.confirmMessage(req, 'put')
+                                        self.putRequests.remove(req)
+                                        req.confirmed = True
+                                    break
+                                    #if req.num_acked_nodes == len(self.other_node_ids):
+                                        # self.putRequests.remove(req)
+                            if newCommits:
+                                self.updateMyGetRequests()
+                    node_state.pPending = pPend
+                    node_state.pCommitted = pComm
+                    self.isHealing = True
+                    node_state.status = "fail"
+                    self.resetHbTimeout()
+                    self.heartbeatSingle(msg['src'])
+                elif msg['appendEntries']['status'] == "fail":
+                    self.isHealing = True
+                    node_state.status = "fail"
+                    self.resetHbTimeout()
+                    self.heartbeatSingle(msg['src'])
+
+    def updateGetRequests(self, getReqs):
+        # if the node has responded to a get request
+        if len(getReqs) > 0:
+            getResponses = []
+            for greq in getReqs:
+                messageId = greq['MID']
+                # if the node returned a value
+                if len(greq['value']) > 0:
+                    val = greq['value']
+                else:
+                    val = ""
+                    # find the corresponding get request
+                if val == 'hold':
+                    continue
+                else:
+                    for req in self.getRequests:
+                        if req.messageId == messageId:
+                            req.ack(msg['src'], val)
+                            if self.printGetMessages:
+                                print req.getPrintMessage()
+                            # if there is a quorum for the request and the request has not already been confirmed
+                            if req.quorumMet and not req.confirmed:
+                                self.confirmMessage(req, 'get')
+                                req.confirmed = True
+                                self.getRequests.remove(req)
+                            elif req.num_acked_nodes == len(self.other_node_ids) or req.deltaTime > self.maxRequestTimer:
+                                self.failRequest(req)
+                                self.getRequests.remove(req)
+                            # if all nodes have responded to the request
+                            #if self.getRequests[num].num_acked_nodes == len(self.other_node_ids):
+                            #    self.getRequests.remove(self.getRequests[num])
+                            break
+
+    def handleHeartbeatFollower(self, msg):
+        # if it has the required fields
+        if msg['term'] and msg['appendEntries']:
+            getResponse = {}
+            message = {}
+            # if the leader's term is ahead of mine
+            if msg['term'] > self.my_state.term:
+                self.my_state.toTerm(msg['term'])
+                self.node_type = "follower"
+                self.currentLeader = msg['leader']
+                self.my_state.pPending = self.my_state.pCommitted
+                # trim your log to only your committed log entries
+                subArray = self.requestLog[:self.my_state.pCommitted]
+                self.requestLog = subArray
+                self.resetElectionTimeout()
+                self.failHeartbeat()
+            # if we are in the same term as the leader
+            elif msg['term'] == self.my_state.term and msg['src'] == msg['leader']:
+                if msg['leader'] != self.currentLeader:
+                    self.currentLeader = msg['leader']
+                    self.failHeartbeat()
+                else:
+                    # leader's pending pointer
+                    pPend = msg['appendEntries']['pPending']
+                    # leader's committed pointer
+                    pComm = msg['appendEntries']['pCommitted']
+                    # entries to append sent by the leader
+                    msgEntries = msg['appendEntries']['entries']
+                    # if the leader thinks our state is okay
+                    if len(msgEntries) > 0:
+                        if msg['appendEntries']['status'] == "ok":
+                            # if I have pending entries to commit, commit them to the dictionary
+                            if self.my_state.pPending >= pComm and pComm > self.my_state.pCommitted:
+                                for i in range(pComm - self.my_state.pCommitted):
+                                    key = self.requestLog[i + self.my_state.pCommitted]['key']
+                                    value = self.requestLog[i + self.my_state.pCommitted]['value']['value']
+                                    term = self.requestLog[i + self.my_state.pCommitted]['value']['term']
+                                    self.dictionary[key] = {'value': value, 'term': term}
+                                self.my_state.pCommitted = pComm
+                                # if there are any new pending entries, add them to the log
+                                if pPend > self.my_state.pPending:
+                                    if pPend - self.my_state.pPending > self.maxOverrideEntries:
+                                        for i in range(self.maxOverrideEntries):
+                                            self.requestLog.append(msgEntries[i])
+                                        self.my_state.pPending += self.maxOverrideEntries
+                                    else:
+                                        for i in range(pPend - self.my_state.pPending):
+                                            self.requestLog.append(msgEntries[i])
+                                        self.my_state.pPending = pPend
+                                # get answers to all of the get requests (if any)
+                                getResps = self.followerGetResponse(msg['get'])
+                                # confirm the heartbeat
+                                self.confirmHeartbeat(getResps)
+                            # else if there are new pending entries but no new commits, add them to the log
+                            elif pComm == self.my_state.pCommitted and pPend > self.my_state.pPending:
+                                for i in range(pPend - self.my_state.pPending):
+                                    self.requestLog.append(msgEntries[i])
+                                self.my_state.pPending = pPend
+                                # get answers to all of the get requests (if any)
+                                getResps = self.followerGetResponse(msg['get'])
+                                # confirm the heartbeat
+                                self.confirmHeartbeat(getResps)
+                            # else fail
                             else:
-                                getResponse = {'MID': messageId, 'key': key, 'value': {}}
-                                getResponses.append(getResponse)
-                            message['get'] = getResponses
-                    self.sendMessage(message)
+                                self.failHeartbeat()
+                        elif msg['appendEntries']['status'] == "override":
+                            self.my_state.pPending = self.my_state.pCommitted
+                            # trim your log to only your committed log entries
+                            subArray = self.requestLog[:self.my_state.pCommitted]
+                            self.requestLog = subArray
+                            # add all of the given entries to your log
+                            allPending = pPend - self.my_state.pCommitted > self.maxOverrideEntries
+                            allCommits = pComm - self.my_state.pCommitted > self.maxOverrideEntries
+                            numEntries = len(msgEntries)
+                            overrideComm = self.my_state.pCommitted
+                            overridePend = self.my_state.pPending
+                            for entry in msgEntries:
+                                self.requestLog.append(entry)
+                            self.my_state.pPending += numEntries
+                            allPending = self.my_state.pPending == pPend
+                            # commit all entries that should be committed
+                            if pComm > self.my_state.pCommitted:
+                                if pComm - self.my_state.pCommitted <= self.maxOverrideEntries:
+                                    allCommits = True
+                                    numEntries = pComm - self.my_state.pCommitted
+                                for i in range(numEntries):
+                                    key = self.requestLog[i + self.my_state.pCommitted]['key']
+                                    value = self.requestLog[i + self.my_state.pCommitted]['value']['value']
+                                    term = self.requestLog[i + self.my_state.pCommitted]['value']['term']
+                                    self.dictionary[key] = {'value': value, 'term': term}
+                                self.my_state.pCommitted += numEntries
+                            else:
+                                allCommits = True
+                            if self.my_state.pPending == pPend and self.my_state.pCommitted == pComm:
+                                getResps = self.followerGetResponse(msg['get'])
+                                self.confirmHeartbeat(getResps)
+                            else:
+                                self.overrideHeartbeat()
+                    else:
+                        if pPend == self.my_state.pPending and pComm >= self.my_state.pCommitted:
+                            for i in range(pComm - self.my_state.pCommitted):
+                                key = self.requestLog[i + self.my_state.pCommitted]['key']
+                                value = self.requestLog[i + self.my_state.pCommitted]['value']['value']
+                                term = self.requestLog[i + self.my_state.pCommitted]['value']['term']
+                                self.dictionary[key] = {'value': value, 'term': term}
+                            self.my_state.pCommitted = pComm
+                            # get answers to all of the get requests (if any)
+                            getResps = self.followerGetResponse(msg['get'])
+                            self.confirmHeartbeat(getResps)
+                        elif pPend == self.my_state.pPending and pComm == self.my_state.pCommitted:
+                            # get answers to all of the get requests (if any)
+                            getResps = self.followerGetResponse(msg['get'])
+                            self.confirmHeartbeat(getResps)
+                        else:
+                            self.failHeartbeat()
+
+    def followerGetResponse(self, getReqs):
+        getResponses = []
+        if len(getReqs) > 0:
+            pPend = self.my_state.pPending
+            pComm = self.my_state.pCommitted
+            pendingEntries = self.requestLog[pComm:pPend]
+            for req in getReqs:
+                messageId = req['MID']
+                key = req['key']
+                inPending = False
+                for entry in pendingEntries:
+                    if entry['key'] == key:
+                        inPending = True
+                        break
+                if inPending:
+                    getResponse = {'MID': messageId, 'key': key, 'value': 'hold'}
+                    getResponses.append(getResponse)
+                elif key in self.dictionary.keys():
+                    getResponse = {'MID': messageId, 'key': key, 'value': self.dictionary[key]['value']}
+                    getResponses.append(getResponse)
+                else:
+                    getResponse = {'MID': messageId, 'key': key, 'value': {}}
+                    getResponses.append(getResponse)
+        return getResponses
+
+    def confirmHeartbeat(self, getResps):
+        message = {'src': self.my_id, 'dst': self.currentLeader, 'leader': self.currentLeader,
+                   'term': self.my_state.term, 'type': 'heartbeat',
+                   'appendEntries': {'status': 'ok', 'pPending': self.my_state.pPending,
+                                     'pCommitted': self.my_state.pCommitted, "entries": {}}, 'get': getResps}
+        if self.printHeartbeatResponses:
+            print "HB RESPONSE " + str(message) + ", 'TIME': " + str(self.currentTime) + "}"
+        self.sendMessage(message)
+
+    def failHeartbeat(self):
+        message = {'src': self.my_id, 'dst': self.currentLeader, 'leader': self.currentLeader,
+                   'term': self.my_state.term, 'type': 'heartbeat',
+                   'appendEntries': {'status': 'fail', 'pPending': self.my_state.pPending,
+                                     'pCommitted': self.my_state.pCommitted, "entries": {}}, 'get': []}
+        if self.printFailedHeartbeats:
+            print "HB FAILED " + str(message) + ", 'TIME': " + str(self.currentTime) + "}"
+        self.sendMessage(message)
+
+    def overrideHeartbeat(self):
+        message = {'src': self.my_id, 'dst': self.currentLeader, 'leader': self.currentLeader,
+                   'term': self.my_state.term, 'type': 'heartbeat',
+                   'appendEntries': {'status': 'override', 'pPending': self.my_state.pPending,
+                                     'pCommitted': self.my_state.pCommitted, "entries": {}}, 'get': []}
+        if self.printFailedHeartbeats:
+            print "HB FAILED " + str(message) + ", 'TIME': " + str(self.currentTime) + "}"
+        self.sendMessage(message)
 
     def failAllRequests(self):
         for greq in self.getRequests:
-            message = {'src': str(self.my_id), 'dst': str(greq.source),
-                        'leader': str(self.currentLeader), 'type': 'redirect',
-                        'MID': str(greq.messageId)}
-            self.sendMessage(message)
+            if not greq.confirmed:
+                self.failRequest(greq)
+        self.getRequests = []
         for preq in self.putRequests:
-            message = {'src': str(self.my_id), 'dst': str(preq.source),
-                       'leader': str(self.currentLeader), 'type': 'redirect',
-                       'MID': str(preq.messageId)}
-            self.sendMessage(message)
+            if not preq.confirmed:
+                self.failRequest(preq)
+        self.putRequests = []
 
-
-    def heartbeat(self):
+    def heartbeatSingle(self, id):
         pPend = self.my_state.pPending
         pComm = self.my_state.pCommitted
         entries = []
         getRequest = None
+        # if there are any pending get requests
         if len(self.getRequests) > 0:
             getRequest = []
             if len(self.getRequests) > self.maxGetReqs:
-                for i in range(self.maxGetReqs):
+                i = 0
+                while i <= self.maxGetReqs and i < len(self.getRequests):
                     if not self.getRequests[i].confirmed:
                         getRequest.append(self.getRequests[i].getEntry())
+                    i += 1
             else:
                 for req in self.getRequests:
                     if not req.confirmed:
                         getRequest.append(req.getEntry())
         message = {}
-        for id in self.other_node_ids:
-            node_state = self.other_node_states[self.other_node_states_dict.get(id)]
-            node_pPend = node_state.pPending
-            node_pComm = node_state.pCommitted
-            if node_state.status == "ok":
-                if pComm != pPend:
-                    entries = self.requestLog[pComm:pPend]
-                if getRequest is not None:
-                    message = {"src": self.my_id, "dst": id, "leader": self.currentLeader, "type": "heartbeat",
-                               "term": self.my_state.term,
-                               "appendEntries": {
-                                   "status": "ok", "pPending": pPend, "pCommitted": pComm, "entries": entries},
-                               "get": getRequest}
+        node_state = self.other_node_states[self.other_node_states_dict[id]]
+        node_pPend = node_state.pPending
+        node_pComm = node_state.pCommitted
+        if node_state.status == "ok":
+            # if there are new pending entries, retrieve them from the log
+            if pComm != pPend:
+                if pComm - node_pComm > self.maxOverrideEntries:
+                    entries = self.requestLog[node_pComm:node_pComm + self.maxOverrideEntries]
+                elif pPend - node_pComm > self.maxOverrideEntries:
+                    entries = self.requestLog[node_pComm:node_pComm + self.maxOverrideEntries]
                 else:
-                    message = {"src": self.my_id, "dst": id, "leader": self.currentLeader, "type": "heartbeat",
-                               "term": self.my_state.term,
-                               "appendEntries": {
-                                   "status": "ok", "pPending": pPend, "pCommitted": pComm, "entries": entries}, 'get': []}
-            elif node_state.status == "fail":
+                    entries = self.requestLog[node_pComm:pPend]
+            # if there are any pending get requests, add them to the heartbeat
+            if getRequest is not None:
+                message = {"src": self.my_id, "dst": id, "leader": self.currentLeader, "type": "heartbeat",
+                           "term": self.my_state.term,
+                           "appendEntries": {"status": "ok", "pPending": pPend, "pCommitted": pComm,
+                                             "entries": entries}, "get": getRequest}
+            else:
+                message = {"src": self.my_id, "dst": id, "leader": self.currentLeader, "type": "heartbeat",
+                           "term": self.my_state.term,
+                           "appendEntries": {"status": "ok", "pPending": pPend, "pCommitted": pComm,
+                                             "entries": entries}, 'get': []}
+            if self.printHeartbeats:
+                print "HEARTBEAT " + str(message) + " TIME: " + str(self.currentTime)
+            self.sendMessage(message)
+        elif node_state.status == "fail":
+            # get all log entries after the node's last committed request
+            if pComm - node_pComm > self.maxOverrideEntries:
+                entries = self.requestLog[node_pComm:node_pComm + self.maxOverrideEntries]
+            elif pPend - node_pComm > self.maxOverrideEntries:
+                entries = self.requestLog[node_pComm:node_pComm + self.maxOverrideEntries]
+            else:
                 entries = self.requestLog[node_pComm:pPend]
+            # if there are any pending get requests, add them to the heartbeat
+            if getRequest is not None:
+                message = {"src": self.my_id, "dst": id, "leader": self.currentLeader, "type": "heartbeat",
+                           "term": self.my_state.term,
+                           "appendEntries": {"status": "override", "pPending": pPend, "pCommitted": pComm,
+                                             "entries": entries}, "get": getRequest}
+            else:
+                message = {"src": self.my_id, "dst": id, "leader": self.currentLeader, "type": "heartbeat",
+                           "term": self.my_state.term,
+                           "appendEntries": {"status": "override", "pPending": pPend, "pCommitted": pComm,
+                                             "entries": entries}, 'get': []}
+            if self.printHeartbeats:
+                print "HEARTBEAT " + str(message) + " TIME: " + str(self.currentTime)
+            self.sendMessage(message)
+
+    def heartbeatBroadcast(self):
+        pPend = self.my_state.pPending
+        pComm = self.my_state.pCommitted
+        entries = []
+        getRequest = None
+        # if there are any pending get requests
+        if len(self.getRequests) > 0:
+            getRequest = []
+            if len(self.getRequests) > self.maxGetReqs:
+                i = 0
+                while i <= self.maxGetReqs and i < len(self.getRequests):
+                    if not self.getRequests[i].confirmed:
+                        getRequest.append(self.getRequests[i].getEntry())
+                    i += 1
+            else:
+                for req in self.getRequests:
+                    if not req.confirmed:
+                        getRequest.append(req.getEntry())
+        message = {}
+        hasPrinted = False
+        self.isHealing = False
+        failedNodes = self.failedNodes()
+        okNodes = self.other_node_ids
+        if len(failedNodes) > 0:
+            self.isHealing = True
+            for id in failedNodes:
+                okNodes.remove(id)
+                node_state = self.other_node_states[self.other_node_states_dict[id]]
+                node_pPend = node_state.pPending
+                node_pComm = node_state.pCommitted
+                # get all log entries after the node's last committed request
+                if pComm - node_pComm > self.maxOverrideEntries:
+                    entries = self.requestLog[node_pComm:node_pComm + self.maxOverrideEntries]
+                elif pPend - node_pComm > self.maxOverrideEntries:
+                    entries = self.requestLog[node_pComm:node_pComm + self.maxOverrideEntries]
+                else:
+                    entries = self.requestLog[node_pComm:pPend]
+                # if there are any pending get requests, add them to the heartbeat
                 if getRequest is not None:
                     message = {"src": self.my_id, "dst": id, "leader": self.currentLeader, "type": "heartbeat",
                                "term": self.my_state.term,
@@ -517,8 +1065,55 @@ class RaftNode:
                                "term": self.my_state.term,
                                "appendEntries": {"status": "override", "pPending": pPend, "pCommitted": pComm,
                                                  "entries": entries}, 'get': []}
-
+                if self.printHeartbeats and not hasPrinted:
+                    print "HEARTBEAT " + str(message) + " TIME: " + str(self.currentTime)
+                    hasPrinted = True
+                self.sendMessage(message)
+        for id in okNodes:
+            node_state = self.other_node_states[self.other_node_states_dict[id]]
+            node_pPend = node_state.pPending
+            node_pComm = node_state.pCommitted
+            if node_state.status == "ok":
+                # if there are new pending entries, retrieve them from the log
+                if pComm != pPend:
+                    if pComm - node_pComm > self.maxOverrideEntries:
+                        entries = self.requestLog[node_pComm:node_pComm + self.maxOverrideEntries]
+                    elif pPend - node_pComm > self.maxOverrideEntries:
+                        entries = self.requestLog[node_pComm:node_pComm + self.maxOverrideEntries]
+                    else:
+                        entries = self.requestLog[node_pComm:pPend]
+                # if there are any pending get requests, add them to the heartbeat
+                if getRequest is not None:
+                    message = {"src": self.my_id, "dst": id, "leader": self.currentLeader, "type": "heartbeat",
+                               "term": self.my_state.term,
+                               "appendEntries": {"status": "ok", "pPending": pPend, "pCommitted": pComm,
+                                                 "entries": entries}, "get": getRequest}
+                else:
+                    message = {"src": self.my_id, "dst": id, "leader": self.currentLeader, "type": "heartbeat",
+                               "term": self.my_state.term,
+                               "appendEntries": {"status": "ok", "pPending": pPend, "pCommitted": pComm,
+                                                 "entries": entries}, 'get': []}
+            if self.printHeartbeats and not hasPrinted:
+                print "HEARTBEAT " + str(message) + " TIME: " + str(self.currentTime)
+                hasPrinted = True
             self.sendMessage(message)
+
+    def failedNodes(self):
+        failedNodes = []
+        for id in self.other_node_ids:
+            node_state = self.other_node_states[self.other_node_states_dict[id]]
+            if node_state.status == "fail":
+                failedNodes.append(id)
+        return failedNodes
+
+    def hasFailedNodes(self):
+        failedNodes = False
+        for id in self.other_node_ids:
+            node_state = self.other_node_states[self.other_node_states_dict[id]]
+            if node_state.status == "fail":
+                failedNodes = True
+                break
+        return failedNodes
 
 
 this_node = RaftNode(sys.argv[1], sys.argv[2:])
@@ -529,83 +1124,60 @@ this_node = RaftNode(sys.argv[1], sys.argv[2:])
 # Connect to the network. All messages to/from other replicas and clients will
 # occur over this socket
 
-electionTimer = time.time()
-heartbeatTimer = electionTimer
-deltaTime = 0
-deltaHeartbeat = 0
-
-# timeouts
-heartbeatTimeout = 0.04
-
-
-def validMessage(msg):
-    return msg['src'] and msg['dst'] and msg['type'] and msg['leader']
-
-
 while True:
 
     #ready = select.select([this_node.my_socket], [], [], this_node.electionTimeout)[0]
 
     # logic for checking for election timeouts
-    currentTime = time.time()
-    deltaTime = currentTime - electionTimer
-    deltaHeartbeat = currentTime - heartbeatTimer
+    this_node.setCurrentTime()
 
-    if deltaTime >= this_node.electionTimeout and this_node.node_type != "leader":
-        electionTimer = currentTime
-        deltaTime = 0
-        this_node.selfElect()
-    elif deltaHeartbeat >= heartbeatTimeout and this_node.node_type == "leader":
-        heartbeatTimer = currentTime
-        # print "Heartbeat{'leader': " + str(this_node.my_id) + ", 'time': " + str(currentTime) + "}"
-        deltaHeartbeat = 0
+    """
+    hasFailedNodes = this_node.hasFailedNodes()
+    if this_node.node_type == "leader" and this_node.hasFailedNodes():
         this_node.heartbeat()
-
-    ready = select.select([this_node.my_socket], [], [], 0.06)[0]
+        hasBeaten = True
+    """
+    ready = select.select([this_node.my_socket], [], [], 0.02)[0]
     if this_node.my_socket in ready:
         msg_raw = this_node.my_socket.recv(32768)
 
         if len(msg_raw) > 0:
             if this_node.node_type != 'leader':
-                electionTimer = currentTime
-                deltaTime = 0
                 this_node.resetElectionTimeout()
             msg = json.loads(msg_raw)
-            if validMessage(msg):
+            if this_node.validMessage(msg):
                 src = msg['src']
+                type = str(msg['type'])
                 if src not in this_node.other_node_ids:
                     this_node.messageCount += 1
-                    # For now, ignore get() and put() from clients
-
-                    type = str(msg['type'])
-                    if this_node.printMessage:
+                    if this_node.printClientMessages:
                         print "********************************"
                         print str(msg) + " TIME: " + str(time.time()) + " MSG# " + str(this_node.messageCount)
                         print "********************************"
                     if type == 'get':
-                        this_node.handleGet(msg)
+                        this_node.handleGetLazy(msg)
                     if type == 'put':
                         this_node.handlePut(msg)
 
                 # Handle election voting
                 else:
-                    if str(msg['type']) == 'vote':
+                    if type == 'vote':
                         this_node.handleVote(msg)
-                    elif str(msg['type']) == 'voteRequest':
+                    elif type == 'voteRequest':
                         this_node.handleVoteRequest(msg)
-                    elif str(msg['type']) == 'heartbeat':
-                        this_node.handleHeartbeat(msg)
+                    elif type == 'heartbeat':
+                        if this_node.node_type == "leader":
+                            this_node.handleHeartbeatLeader(msg)
+                        elif this_node.node_type == "follower":
+                            this_node.handleHeartbeatFollower(msg)
             else:
                 this_node.failMessage(msg)
 
-
-        """
-        if this_node.node_type == "leader":
-            #timer = currentTime
-            print "Heartbeat{'leader': " + str(this_node.my_id) + ", 'time': " + str(electionTimer + deltaTime) + "}"
-            this_node.heartbeat()
-
-    if deltaTime >= this_node.electionTimeout:
-        timer = currentTime
+    # if the election timer has timed out, initiate a new election
+    if this_node.checkElectionTimeout() and this_node.node_type != "leader":
+        this_node.resetElectionTimeout()
         this_node.selfElect()
-    """
+    # if the heartbeat timer has timed out,
+    elif this_node.checkHbTimeout() and this_node.node_type == "leader":
+        this_node.resetHbTimeout()
+        this_node.heartbeatBroadcast()
