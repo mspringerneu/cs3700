@@ -279,7 +279,7 @@ class RaftNode:
         self.isPartitioned = False
         self.lastCommitTimer = self.currentTime
         self.maxCommitTimer = 0.5
-        self.timeoutCommits = True
+        self.timeoutCommits = False
 
     #############################
     ##                         ##
