@@ -586,10 +586,9 @@ class RaftNode:
                                         self.confirmMessage(req, 'put')
                                         self.putRequests.popleft()
                                         # req.confirmed = True
-                                        self.my_state.pCommitted = pPend
+                                    break
                                     #if req.num_acked_nodes == len(self.other_node_ids):
                                         # self.putRequests.remove(req)
-                                    break
                     node_state.pPending = pPend
                     node_state.pCommitted = pComm
                     self.isHealing = True
@@ -769,143 +768,6 @@ class RaftNode:
         if self.printFailedHeartbeats:
             print "HB FAILED " + str(message) + ", 'TIME': " + str(self.currentTime) + "}"
         self.sendMessage(message)
-
-
-    def handleHeartbeat(self, msg):
-        if msg['term'] and msg['appendEntries']:
-            getResponse = {}
-            message = {}
-            if msg['term'] > self.my_state.term:
-                self.my_state.toTerm(msg['term'])
-                self.node_type = "follower"
-                self.currentLeader = str(msg['leader'])
-                message = {'src': self.my_id, 'dst': msg['src'], 'leader': self.currentLeader,
-                           'term': self.my_state.term, 'type': 'heartbeat',
-                           'appendEntries': {'status': 'fail', 'pPending': self.my_state.pPending,
-                                             'pCommitted': self.my_state.pCommitted, "entries": {}}}
-                self.sendMessage(message)
-                self.failAllRequests()
-            elif msg['term'] == self.my_state.term:
-                if self.node_type == "leader":
-                    pPend = msg['appendEntries']['pPending']
-                    pComm = msg['appendEntries']['pCommitted']
-                    node_state = self.other_node_states[self.other_node_states_dict.get(msg['src'])]
-                    node_state.pPending = pPend
-                    node_state.pCommitted = pComm
-                    if msg['appendEntries']['status'] == "ok":
-                        node_state.status = "ok"
-                        if pPend >= node_state.pPending and pComm == node_state.pCommitted:
-                            if pPend - pComm > 0:
-                                for i in range(pPend - pComm):
-                                    key = self.requestLog[i + pComm]['key']
-                                    value = self.requestLog[i + pComm]['value']['value']
-                                    for req in self.putRequests:
-                                        if req.key == key and req.value == value:
-                                            req.ack(msg['src'])
-                                            if req.quorumMet(self.quorum) and not req.confirmed:
-                                                # print "Committing entry: 'key: " + str(key) + ", 'value': " + str(value) + " TIME: " + str(time.time()) + " MSG# " + str(self.messageCount)
-                                                self.dictionary[key] = {'value': value, 'term': self.my_state.term}
-                                                self.confirmMessage(req, 'put')
-                                                req.confirmed = True
-                                            if req.num_acked_nodes == len(self.other_node_ids):
-                                                self.putRequests.remove(req)
-                                            break
-                                self.my_state.pCommitted = pPend
-                    elif msg['appendEntries']['status'] == "fail":
-                        node_state.status = "fail"
-                    if len(msg['get']) > 0:
-                        getResponses = []
-                        getReqs = msg['get']
-                        for req in getReqs:
-                            # print str(msg)
-                            messageId = req['MID']
-                            # print req['value']['value']
-                            if len(req['value']) > 0:
-                                val = req['value']
-                                # print val
-                                for num in range(len(self.getRequests)):
-                                    # print str(self.getRequests[num].value) + " == " + str(val)
-                                    if self.getRequests[num].messageId == messageId and self.getRequests[num].value == val:
-                                        #print str(self.getRequests[num].value) + " == " + str(val)
-                                        self.getRequests[num].ack(msg['src'])
-                                        if self.getRequests[num].quorumMet(self.quorum) and not self.getRequests[num].confirmed:
-                                            self.confirmMessage(self.getRequests[num], 'get')
-                                            self.getRequests[num].confirmed = True
-                                        if self.getRequests[num].num_acked_nodes >= len(self.other_node_ids):
-                                            self.getRequests.remove(self.getRequests[num])
-                                        break
-                elif self.node_type == "follower":
-                    self.currentLeader = str(msg['leader'])
-                    dest = str(msg['src'])
-                    pPend = msg['appendEntries']['pPending']
-                    pComm = msg['appendEntries']['pCommitted']
-                    msgEntries = msg['appendEntries']['entries']
-                    if msg['appendEntries']['status'] == "ok":
-                        if self.my_state.pCommitted == pComm and self.my_state.pPending < pPend:
-                            for i in range(pPend - self.my_state.pPending):
-                                self.requestLog.append(msgEntries[i])
-                            self.my_state.pPending = pPend
-                            message = {'src': self.my_id, 'dst': dest, 'leader': self.currentLeader,
-                                       'term': self.my_state.term, 'type': 'heartbeat',
-                                       'appendEntries': {'status': 'ok', 'pPending': self.my_state.pPending,
-                                                         'pCommitted': self.my_state.pCommitted, "entries": {}}, 'get': {}}
-                        elif self.my_state.pPending <= pPend and self.my_state.pCommitted < pComm:
-                            if self.my_state.pPending > pComm:
-                                for i in range(pComm - self.my_state.pCommitted):
-                                    key = self.requestLog[i + self.my_state.pCommitted]['key']
-                                    value = self.requestLog[i + self.my_state.pCommitted]['value']['value']
-                                    self.dictionary[key] = {'value': value, 'term': self.my_state.term}
-                                self.my_state.pCommitted = pComm
-                                message = {'src': self.my_id, 'dst': dest, 'leader': self.currentLeader,
-                                           'term': self.my_state.term, 'type': 'heartbeat',
-                                           'appendEntries': {'status': 'ok', 'pPending': self.my_state.pPending,
-                                                             'pCommitted': self.my_state.pCommitted, "entries": {}}, 'get': {}}
-                            else:
-                                message = {'src': self.my_id, 'dst': dest, 'leader': self.currentLeader,
-                                           'term': self.my_state.term, 'type': 'heartbeat',
-                                           'appendEntries': {'status': 'fail', 'pPending': self.my_state.pPending,
-                                                             'pCommitted': self.my_state.pCommitted, "entries": {}},
-                                           'get': {}}
-                        elif self.my_state.pCommitted == pComm and self.my_state.pPending == pPend:
-                            message = {'src': self.my_id, 'dst': dest, 'leader': self.currentLeader,
-                                       'term': self.my_state.term, 'type': 'heartbeat',
-                                       'appendEntries': {'status': 'ok', 'pPending': self.my_state.pPending,
-                                                         'pCommitted': self.my_state.pCommitted, "entries": {}},
-                                       'get': {}}
-                        else:
-                            message = {'src': self.my_id, 'dst': dest, 'leader': self.currentLeader,
-                                       'term': self.my_state.term, 'type': 'heartbeat',
-                                       'appendEntries': {'status': 'fail', 'pPending': self.my_state.pPending,
-                                                         'pCommitted': self.my_state.pCommitted, "entries": {}}, 'get': {}}
-                    elif msg['appendEntries']['status'] == "override":
-                        entrySubArray = self.requestLog[:pComm]
-                        for i in range(pPend - self.my_state.pCommitted):
-                            entrySubArray.append(msgEntries[i])
-                        self.requestLog = entrySubArray
-                        for i in range(pComm - self.my_state.pCommitted):
-                            key = self.requestLog[i + self.my_state.pCommitted]['key']
-                            value = self.requestLog[i + self.my_state.pCommitted]['value']['value']
-                            self.dictionary[key] = {'value': value, 'term': self.my_state.term}
-                        self.my_state.pPending = pPend
-                        self.my_state.pCommitted = pComm
-                        message = {'src': self.my_id, 'dst': dest, 'leader': self.currentLeader,
-                                   'term': self.my_state.term, 'type': 'heartbeat',
-                                   'appendEntries': {'status': 'ok', 'pPending': self.my_state.pPending,
-                                                     'pCommitted': self.my_state.pCommitted, "entries": {}}, 'get': {}}
-                    if len(msg['get']) > 0:
-                        getResponses = []
-                        getReqs = msg['get']
-                        for req in getReqs:
-                            messageId = req['MID']
-                            key = req['key']
-                            if self.dictionary.has_key(key):
-                                getResponse = {'MID': messageId, 'key': key, 'value': self.dictionary.get(key)['value']}
-                                getResponses.append(getResponse)
-                            else:
-                                getResponse = {'MID': messageId, 'key': key, 'value': {}}
-                                getResponses.append(getResponse)
-                            message['get'] = getResponses
-                    self.sendMessage(message)
 
     def failAllRequests(self):
         for greq in self.getRequests:
