@@ -269,8 +269,8 @@ class RaftNode:
         self.printClientResponses = False
         self.printElectionMessages = False
         self.printNewLeader = False
-        self.printHeartbeats = False
-        self.printHeartbeatResponses = False
+        self.printHeartbeats = True
+        self.printHeartbeatResponses = True
         self.printFailedHeartbeats = False
         self.printCommits = False
         self.maxGetReqs = 5
